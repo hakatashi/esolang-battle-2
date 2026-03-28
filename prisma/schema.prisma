@@ -11,3 +11,148 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+/// Users that participate in contests and submit solutions
+model User {
+  id       Int      @id @default(autoincrement())
+  name     String
+  password String
+
+  teamId Int?
+  team   Team?    @relation(fields: [teamId], references: [id])
+
+  submissions Submission[]
+  testedProblems Problem[] @relation("ProblemTesters")
+}
+
+/// Teams that users belong to within a contest
+model Team {
+  id    Int    @id @default(autoincrement())
+  color String
+
+  users   User[]
+  contest Contest @relation(fields: [contestId], references: [id])
+  contestId Int
+}
+
+/// A contest in which users compete by code golf
+model Contest {
+  id         Int                 @id @default(autoincrement())
+  viewerType ContestViewerType
+  startAt    DateTime
+  endAt      DateTime
+
+  problems Problem[]
+  teams    Team[]
+  board    Board?
+}
+
+/// Scoreboard state for a contest
+model Board {
+  id           Int     @id @default(autoincrement())
+  contest      Contest @relation(fields: [contestId], references: [id])
+  contestId    Int     @unique
+
+  /// e.g. list of languages shown on the board
+  languages        Json
+  /// color configuration per language
+  colorOfLanguages Json
+  /// score configuration / current scores per language
+  scoreOfLanguages Json
+  /// board edges / graph structure
+  edges            Json
+}
+
+/// Programming language used for submissions
+model Language {
+  id            Int      @id @default(autoincrement())
+  dockerImageId String
+  description   String
+
+  submissions      Submission[]
+  acceptedProblems Problem[]   @relation("ProblemAcceptedLanguages")
+}
+
+/// A problem to be solved in the contest
+model Problem {
+  id               Int        @id @default(autoincrement())
+  problemStatement String
+
+  contest   Contest @relation(fields: [contestId], references: [id])
+  contestId Int
+
+  submissions Submission[]
+  testCases  TestCase[]
+
+  /// languages accepted for this problem
+  acceptedLanguages Language[] @relation("ProblemAcceptedLanguages")
+  /// users that act as testers for this problem
+  testers          User[]     @relation("ProblemTesters")
+}
+
+/// Individual test case for a problem
+model TestCase {
+  id      Int    @id @default(autoincrement())
+  input   String
+  /// checker script that looks at submission result and assigns score
+  checkerScript String?
+  output        String
+  isSample      Boolean
+
+  problem   Problem   @relation(fields: [problemId], references: [id])
+  problemId Int
+
+  executions Execution[]
+}
+
+/// Result of running a submission against a single test case
+model Execution {
+  testcase   TestCase @relation(fields: [testcaseId], references: [id])
+  testcaseId Int
+
+  submission   Submission @relation(fields: [submissionId], references: [id])
+  submissionId Int
+
+  status        ExecutionStatus
+  stdout        String?
+  stderr        String?
+  executionTime Int       /// e.g. milliseconds
+  executedAt    DateTime
+
+  @@id([testcaseId, submissionId])
+}
+
+/// A submitted solution to a problem
+model Submission {
+  id          Int      @id @default(autoincrement())
+  code        String
+  codeLength  Int
+  submittedAt DateTime
+  score       Int
+
+  language   Language @relation(fields: [languageId], references: [id])
+  languageId Int
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+
+  problem   Problem @relation(fields: [problemId], references: [id])
+  problemId Int
+
+  executions Execution[]
+}
+
+/// Status of execution (e.g. AC/WA/TLE etc.)
+enum ExecutionStatus {
+  AC
+  WA
+  TLE
+  RE
+  WJ
+}
+
+enum ContestViewerType {
+  GRID
+  HONEYCOMB
+}
+
