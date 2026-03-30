@@ -10,6 +10,8 @@ import { getLanguages } from "./function/getLanguages.js";
 import { getSubmissionDetail } from "./function/getSubmissionDetail.js";
 import { getSubmittableLanguageIdsForTeam } from "./function/getSubmittableLanguages.js";
 import { getUserInfo, verifyUserLogin, registerUser } from "./function/authUser.js";
+import { getUsersWithTeams } from "./function/getUsers.js";
+import { getTeams } from "./function/getTeams.js";
 import {
   updateBoardFromSubmissions,
   recomputeBoardFromSubmissions,
@@ -180,6 +182,111 @@ const server = http.createServer(async (req, res) => {
       }
 
       return sendJson(res, 200, user);
+    }
+
+    // GET /api/admin/users : ユーザ一覧（管理者専用）
+    if (req.method === "GET" && req.url === "/api/admin/users") {
+      const currentUserId = getCurrentUserId(req);
+      if (!currentUserId) {
+        return sendJson(res, 401, { error: "Unauthorized" });
+      }
+
+      const me = await getUserInfo(currentUserId);
+      if (!me) {
+        return sendJson(res, 404, { error: "User not found" });
+      }
+      if (!me.isAdmin) {
+        return sendJson(res, 403, { error: "管理者のみユーザ一覧を参照できます" });
+      }
+
+      const users = await getUsersWithTeams();
+      return sendJson(res, 200, { users });
+    }
+
+    // PATCH /api/admin/users/:id/team : ユーザのチーム割り当て変更（管理者専用）
+    if (req.method === "PATCH" && req.url.startsWith("/api/admin/users/") && req.url.endsWith("/team")) {
+      const currentUserId = getCurrentUserId(req);
+      if (!currentUserId) {
+        return sendJson(res, 401, { error: "Unauthorized" });
+      }
+
+      const me = await getUserInfo(currentUserId);
+      if (!me) {
+        return sendJson(res, 404, { error: "User not found" });
+      }
+      if (!me.isAdmin) {
+        return sendJson(res, 403, { error: "管理者のみチーム割り当てを変更できます" });
+      }
+
+      const url = new URL(req.url, `http://localhost:${PORT}`);
+      const segments = url.pathname.split("/").filter(Boolean); // ["api","admin","users",":id","team"]
+      const idSegment = segments[3];
+      const userId = Number(idSegment);
+      if (!Number.isFinite(userId) || userId <= 0) {
+        return sendJson(res, 400, { error: "Invalid user id" });
+      }
+
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(chunk as Buffer);
+      }
+      const rawBody = Buffer.concat(chunks).toString("utf8");
+
+      let body: any;
+      try {
+        body = rawBody ? JSON.parse(rawBody) : {};
+      } catch {
+        return sendJson(res, 400, { error: "Invalid JSON" });
+      }
+
+      const { teamId } = body ?? {};
+      let nextTeamId: number | null = null;
+      if (teamId === null || teamId === undefined || teamId === "") {
+        nextTeamId = null;
+      } else if (typeof teamId === "number") {
+        nextTeamId = teamId;
+      } else {
+        const parsed = Number(teamId);
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+          return sendJson(res, 400, { error: "Invalid team id" });
+        }
+        nextTeamId = parsed;
+      }
+
+      const { PrismaClient } = await import("./generated/prisma/client.js");
+      const { PrismaPg } = await import("@prisma/adapter-pg");
+      const { Pool } = await import("pg");
+      const databaseUrlLocal = process.env.DATABASE_URL;
+      if (!databaseUrlLocal) {
+        throw new Error("DATABASE_URL environment variable is not set");
+      }
+      const poolLocal = new Pool({ connectionString: databaseUrlLocal });
+      const adapterLocal = new PrismaPg(poolLocal);
+      const prismaLocal = new PrismaClient({ adapter: adapterLocal });
+
+      try {
+        if (nextTeamId !== null) {
+          const team = await prismaLocal.team.findUnique({ where: { id: nextTeamId } });
+          if (!team) {
+            return sendJson(res, 400, { error: "指定されたチームが存在しません" });
+          }
+        }
+
+        const updated = await prismaLocal.user.update({
+          where: { id: userId },
+          data: { teamId: nextTeamId },
+          include: { team: true },
+        });
+
+        return sendJson(res, 200, {
+          id: updated.id,
+          name: updated.name,
+          isAdmin: Boolean(updated.isAdmin),
+          team: updated.team ? { id: updated.team.id, color: updated.team.color } : null,
+        });
+      } finally {
+        await prismaLocal.$disconnect();
+      }
     }
 
     // POST /api/submissions : コード提出（認証必須）
@@ -464,6 +571,12 @@ const server = http.createServer(async (req, res) => {
         console.error("failed to get submittable languages", e);
         return sendJson(res, 500, { error: "Failed to get submittable languages" });
       }
+    }
+
+    // GET /api/teams : チーム一覧（今のところ誰でも参照可）
+    if (req.method === "GET" && req.url === "/api/teams") {
+      const teams = await getTeams();
+      return sendJson(res, 200, { teams });
     }
 
     // GET /api/languages : 使用可能な言語一覧
