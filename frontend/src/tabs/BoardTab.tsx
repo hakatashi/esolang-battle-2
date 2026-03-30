@@ -119,7 +119,19 @@ export function BoardTab() {
       }}
     >
       {cells.map((cell, index) => (
-        <div key={index} className={cellClass(cell.owner)}>
+        <div
+          key={index}
+          className={cellClass(cell.owner)}
+          style={cell.languageId !== null ? { cursor: "pointer" } : undefined}
+          onClick={() => {
+            if (cell.languageId === null) return;
+            const url = new URL(window.location.href);
+            url.pathname = "/submit";
+            url.searchParams.set("languageId", String(cell.languageId));
+            window.history.pushState(null, "", url.toString());
+            window.dispatchEvent(new PopStateEvent("popstate"));
+          }}
+        >
           <div className="cell-label">
             {cell.languageName && (
               <div className="cell-label-name">{cell.languageName}</div>

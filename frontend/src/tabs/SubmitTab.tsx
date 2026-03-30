@@ -30,7 +30,27 @@ export function SubmitTab() {
         if (!cancelled) {
           setLanguages(data.languages);
           if (data.languages.length > 0) {
-            setSelectedLanguageId(String(data.languages[0].id));
+            const search = window.location.search;
+            let initialId: string | null = null;
+            if (search) {
+              const params = new URLSearchParams(search);
+              const fromParam = params.get("languageId") ?? params.get("language");
+              if (fromParam) {
+                // id で一致を探す
+                const byId = data.languages.find((l) => String(l.id) === fromParam);
+                if (byId) {
+                  initialId = String(byId.id);
+                } else {
+                  // name で一致を探す
+                  const byName = data.languages.find((l) => l.name === fromParam);
+                  if (byName) {
+                    initialId = String(byName.id);
+                  }
+                }
+              }
+            }
+
+            setSelectedLanguageId(initialId ?? String(data.languages[0].id));
           }
         }
       } catch (e) {
