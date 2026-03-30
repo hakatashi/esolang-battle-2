@@ -40,7 +40,11 @@ export async function getSubmissions(filter: GetSubmissionsFilter = {}) {
     where,
     orderBy: { submittedAt: "desc" },
     include: {
-      user: true,
+      user: {
+        include: {
+          team: true,
+        },
+      },
       problem: true,
       language: true,
     },

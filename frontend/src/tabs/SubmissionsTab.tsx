@@ -5,6 +5,7 @@ type SubmissionSummary = {
   codeLength: number;
   score: number;
   submittedAt: string;
+  user: { id: number; name: string; team: { id: number; color: string } | null };
   language: { id: number; name: string; description: string };
   problem: { id: number };
 };
@@ -194,6 +195,8 @@ export function SubmissionsTab() {
         <thead>
           <tr>
             <th>ID</th>
+            <th>ユーザ</th>
+            <th>チーム色</th>
             <th>問題ID</th>
             <th>言語</th>
             <th>コード長</th>
@@ -212,6 +215,8 @@ export function SubmissionsTab() {
               }}
             >
               <td>{s.id}</td>
+              <td>{s.user.name}</td>
+              <td>{s.user.team ? s.user.team.color : "-"}</td>
               <td>{s.problem.id}</td>
               <td>{s.language.name}</td>
               <td>{s.codeLength}</td>
