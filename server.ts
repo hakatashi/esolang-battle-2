@@ -5,6 +5,7 @@ import { runSubmission } from "./function/runSubmission.js";
 import { getSubmissions } from "./function/getSubmissions.js";
 import { getBoard } from "./function/getBoard.js";
 import { getProblem, getFirstProblemByIdAsc } from "./function/getProblem.js";
+import { listProblems } from "./function/listProblems.js";
 import { testCode } from "./function/testCode.js";
 import { getLanguages } from "./function/getLanguages.js";
 import { getSubmissionDetail } from "./function/getSubmissionDetail.js";
@@ -718,6 +719,12 @@ const server = http.createServer(async (req, res) => {
         description: l.description,
       }));
       return sendJson(res, 200, { languages });
+    }
+
+    // GET /api/problems_list : 問題一覧（id, title）
+    if (req.method === "GET" && req.url === "/api/problems_list") {
+      const problems = await listProblems();
+      return sendJson(res, 200, { problems });
     }
 
     // GET /api/problems : 最初の問題を取得（ID 昇順の先頭）

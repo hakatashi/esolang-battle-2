@@ -6,14 +6,23 @@ type LanguageSummary = {
   description: string;
 };
 
+type ProblemSummary = {
+  id: number;
+  title: string;
+};
+
 export function SubmitTab() {
   const [languages, setLanguages] = React.useState<LanguageSummary[] | null>(null);
   const [languagesError, setLanguagesError] = React.useState<string | null>(null);
   const [isLoadingLanguages, setIsLoadingLanguages] = React.useState(false);
 
+  const [problems, setProblems] = React.useState<ProblemSummary[] | null>(null);
+  const [problemsError, setProblemsError] = React.useState<string | null>(null);
+  const [isLoadingProblems, setIsLoadingProblems] = React.useState(false);
+
   const [code, setCode] = React.useState("");
   const [selectedLanguageId, setSelectedLanguageId] = React.useState<string>("");
-  const [problemIdInput, setProblemIdInput] = React.useState<string>("1");
+  const [selectedProblemId, setSelectedProblemId] = React.useState<string>("");
   const [submitMessage, setSubmitMessage] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -67,6 +76,36 @@ export function SubmitTab() {
     };
   }, []);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    setIsLoadingProblems(true);
+    setProblemsError(null);
+
+    (async () => {
+      try {
+        const res = await fetch("/api/problems_list");
+        if (!res.ok) throw new Error(`Failed to load problems: ${res.status}`);
+        const data = (await res.json()) as { problems: ProblemSummary[] };
+        if (!cancelled) {
+          setProblems(data.problems);
+          if (data.problems.length > 0) {
+            setSelectedProblemId(String(data.problems[0].id));
+          }
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setProblemsError(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (!cancelled) setIsLoadingProblems(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitMessage(null);
@@ -77,7 +116,7 @@ export function SubmitTab() {
         throw new Error("languageId must be a positive number");
       }
 
-      const problemId = Number(problemIdInput);
+      const problemId = Number(selectedProblemId);
       if (!Number.isFinite(problemId) || problemId <= 0) {
         throw new Error("problemId must be a positive number");
       }
@@ -120,25 +159,41 @@ export function SubmitTab() {
     return <div>Loading languages...</div>;
   }
 
+  if (isLoadingProblems) {
+    return <div>Loading problems...</div>;
+  }
+
   if (languagesError) {
     return <div style={{ color: "#b00020" }}>Error: {languagesError}</div>;
+  }
+
+  if (problemsError) {
+    return <div style={{ color: "#b00020" }}>Error: {problemsError}</div>;
   }
 
   if (!languages || languages.length === 0) {
     return <div>言語が定義されていません。</div>;
   }
 
+  if (!problems || problems.length === 0) {
+    return <div>問題が定義されていません。</div>;
+  }
+
   return (
     <form className="submit-form" onSubmit={handleSubmit}>
       <div className="form-row">
         <label>
-          問題ID:
-          <input
-            type="number"
-            min={1}
-            value={problemIdInput}
-            onChange={(e) => setProblemIdInput(e.target.value)}
-          />
+          問題:
+          <select
+            value={selectedProblemId}
+            onChange={(e) => setSelectedProblemId(e.target.value)}
+          >
+            {problems.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title} (ID {p.id})
+              </option>
+            ))}
+          </select>
         </label>
       </div>
       <div className="form-row">
