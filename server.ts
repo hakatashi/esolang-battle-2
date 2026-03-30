@@ -19,6 +19,10 @@ import {
   updateProblemForAdmin,
 } from "./function/adminProblems.js";
 import {
+  listTestCasesForProblem,
+  createTestCaseForProblem,
+} from "./function/adminTestCases.js";
+import {
   updateBoardFromSubmissions,
   recomputeBoardFromSubmissions,
 } from "./function/updateBoardFromSubmissions.js";
@@ -364,7 +368,11 @@ const server = http.createServer(async (req, res) => {
     }
 
     // PATCH /api/admin/problems/:id : 問題編集（管理者専用）
-    if (req.method === "PATCH" && req.url.startsWith("/api/admin/problems/")) {
+    if (
+      req.method === "PATCH" &&
+      req.url.startsWith("/api/admin/problems/") &&
+      !req.url.endsWith("/testcases")
+    ) {
       const currentUserId = getCurrentUserId(req);
       if (!currentUserId) {
         return sendJson(res, 401, { error: "Unauthorized" });
@@ -414,6 +422,106 @@ const server = http.createServer(async (req, res) => {
       try {
         const problem = await updateProblemForAdmin(problemId, contestIdNum, title, problemStatement);
         return sendJson(res, 200, { problem });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return sendJson(res, 400, { error: msg });
+      }
+    }
+
+    // GET /api/admin/problems/:id/testcases : テストケース一覧（管理者専用）
+    if (
+      req.method === "GET" &&
+      req.url.startsWith("/api/admin/problems/") &&
+      req.url.endsWith("/testcases")
+    ) {
+      const currentUserId = getCurrentUserId(req);
+      if (!currentUserId) {
+        return sendJson(res, 401, { error: "Unauthorized" });
+      }
+
+      const me = await getUserInfo(currentUserId);
+      if (!me) {
+        return sendJson(res, 404, { error: "User not found" });
+      }
+      if (!me.isAdmin) {
+        return sendJson(res, 403, { error: "管理者のみテストケースを参照できます" });
+      }
+
+      const url = new URL(req.url, `http://localhost:${PORT}`);
+      const segments = url.pathname.split("/").filter(Boolean); // ["api","admin","problems",":id","testcases"]
+      const idSegment = segments[3];
+      const problemId = Number(idSegment);
+      if (!Number.isFinite(problemId) || problemId <= 0) {
+        return sendJson(res, 400, { error: "Invalid problem id" });
+      }
+
+      const testcases = await listTestCasesForProblem(problemId);
+      return sendJson(res, 200, { testcases });
+    }
+
+    // POST /api/admin/problems/:id/testcases : テストケース追加（管理者専用）
+    if (
+      req.method === "POST" &&
+      req.url.startsWith("/api/admin/problems/") &&
+      req.url.endsWith("/testcases")
+    ) {
+      const currentUserId = getCurrentUserId(req);
+      if (!currentUserId) {
+        return sendJson(res, 401, { error: "Unauthorized" });
+      }
+
+      const me = await getUserInfo(currentUserId);
+      if (!me) {
+        return sendJson(res, 404, { error: "User not found" });
+      }
+      if (!me.isAdmin) {
+        return sendJson(res, 403, { error: "管理者のみテストケースを追加できます" });
+      }
+
+      const url = new URL(req.url, `http://localhost:${PORT}`);
+      const segments = url.pathname.split("/").filter(Boolean); // ["api","admin","problems",":id","testcases"]
+      const idSegment = segments[3];
+      const problemId = Number(idSegment);
+      if (!Number.isFinite(problemId) || problemId <= 0) {
+        return sendJson(res, 400, { error: "Invalid problem id" });
+      }
+
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(chunk as Buffer);
+      }
+      const rawBody = Buffer.concat(chunks).toString("utf8");
+
+      let body: any;
+      try {
+        body = rawBody ? JSON.parse(rawBody) : {};
+      } catch {
+        return sendJson(res, 400, { error: "Invalid JSON" });
+      }
+
+      const { input, output, isSample, checkerScript } = body ?? {};
+      if (typeof input !== "string" || !input.length) {
+        return sendJson(res, 400, { error: "input is required" });
+      }
+      if (typeof output !== "string" || !output.length) {
+        return sendJson(res, 400, { error: "output is required" });
+      }
+
+      const isSampleBool = Boolean(isSample);
+      const checkerScriptStr =
+        typeof checkerScript === "string" && checkerScript.length > 0
+          ? checkerScript
+          : null;
+
+      try {
+        const testcase = await createTestCaseForProblem(
+          problemId,
+          input,
+          output,
+          isSampleBool,
+          checkerScriptStr,
+        );
+        return sendJson(res, 201, { testcase });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         return sendJson(res, 400, { error: msg });
