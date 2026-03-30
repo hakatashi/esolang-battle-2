@@ -36,6 +36,12 @@ export default function App() {
   const [currentPath, setCurrentPath] = React.useState<string>(() => window.location.pathname);
 
   React.useEffect(() => {
+    // 初回に "/" へアクセスされた場合は /board にリダイレクト
+    if (window.location.pathname === "/") {
+      window.history.replaceState(null, "", "/board");
+      setCurrentPath("/board");
+    }
+
     const handlePopState = () => {
       setCurrentPath(window.location.pathname);
     };
