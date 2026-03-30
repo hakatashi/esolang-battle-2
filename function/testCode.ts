@@ -35,7 +35,7 @@ export async function testCode({ languageId, code }: TestCodeParams) {
   }
 
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "esolang-code-test-"));
-  const codePath = path.join(tmpDir, "code.bf");
+  const codePath = path.join(tmpDir, "code");
 
   try {
     await fs.writeFile(codePath, code, "utf8");

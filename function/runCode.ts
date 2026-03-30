@@ -28,13 +28,14 @@ export async function runCode(
 	codePath: string,
 ): Promise<DockerResult> {
 	console.log("Pulling image:", image);
+	const cmd = image.split("/").slice(-1)[0];
 	const resolvedCodePath = path.resolve(codePath);
 	const hostDir = path.dirname(resolvedCodePath);
 	const filename = path.basename(resolvedCodePath);
 
 	const container = await docker.createContainer({
 		Image: image,
-		Cmd: ["brainfuck-esomer", `/code/${filename}`],
+		Cmd: [cmd!, `/code/${filename}`],
 		AttachStdout: true,
 		AttachStderr: true,
 		Tty: false,
@@ -91,6 +92,7 @@ export async function runAllTestCasesInSingleContainer(
 	const resolvedCodePath = path.resolve(codePath);
 	const hostCodeDir = path.dirname(resolvedCodePath);
 	const codeFileName = path.basename(resolvedCodePath);
+	const cmd = image.split("/").slice(-1)[0];
 
 	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "esolang-tests-"));
 
@@ -103,7 +105,7 @@ export async function runAllTestCasesInSingleContainer(
 			await fs.writeFile(inputPath, tc.input, "utf8");
 
 			scriptLines.push(
-				`brainfuck-esomer /code/${codeFileName} < /volume/INPUT_${base} > /volume/OUTPUT_${base} 2>/volume/ERR_${base}; echo $? > /volume/EXIT_${base}`,
+				`${cmd} /code/${codeFileName} < /volume/INPUT_${base} > /volume/OUTPUT_${base} 2>/volume/ERR_${base}; echo $? > /volume/EXIT_${base}`,
 			);
 		}
 

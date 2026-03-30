@@ -40,7 +40,7 @@ export async function runSubmission(submissionId: number) {
     throw new Error(`Language ${submission.languageId} has no dockerImageId`);
   }
 
-  const codePath = path.resolve("code.bf");
+  const codePath = path.resolve("code");
   await fs.writeFile(codePath, submission.code, "utf8");
 
   console.log("Using image:", image);
