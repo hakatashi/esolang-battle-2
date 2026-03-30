@@ -111,35 +111,6 @@ function buildAdjacency(
   return adjacency;
 }
 
-function bfsReachable(
-  startIndices: number[],
-  adjacency: Map<number, number[]>,
-): Set<number> {
-  const visited = new Set<number>();
-  const queue: number[] = [];
-
-  for (const idx of startIndices) {
-    if (!visited.has(idx)) {
-      visited.add(idx);
-      queue.push(idx);
-    }
-  }
-
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    const neighbors = adjacency.get(current) ?? [];
-
-    for (const next of neighbors) {
-      if (!visited.has(next)) {
-        visited.add(next);
-        queue.push(next);
-      }
-    }
-  }
-
-  return visited;
-}
-
 function normalizeTeamColor(raw: string): OwnerColor {
   const lower = raw.toLowerCase();
   if (lower === "red" || lower === "blue") {
@@ -158,10 +129,10 @@ function normalizeOwnerColor(raw: string | undefined): OwnerColor {
 /**
  * 指定した boardId と teamId について、そのチームが提出可能な languageId のリストを返す。
  *
- * ルール:
- * - 自分の色が塗られたセルに対応する言語には提出可能。
- * - さらに、自分の色が塗られたセルに graph edges で連結しているセルに対応する言語にも提出可能。
- * - FIXED セルは言語を持たないので提出対象にはならないが、所有色が自分色なら到達元のセルになりうる。
+ * 現在のルール:
+ * - 自分の色が塗られた PLAYABLE セルに置かれた言語。
+ * - そのセルに 1 本の edge で隣接する PLAYABLE セルに置かれた言語。
+ * - FIXED セルは言語を持たないので提出対象にはならないが、所有色が自分色なら「隣接元」として扱われうる。
  */
 export async function getSubmittableLanguageIdsForTeam(
   boardId: number,
@@ -219,21 +190,29 @@ export async function getSubmittableLanguageIdsForTeam(
 
   const adjacency = buildAdjacency(placements, boardRow.edges);
 
-  const reachableIndices = bfsReachable(ownedIndices, adjacency);
+  // 自分色セル + そこから 1 本の edge で繋がるセルを候補にする
+  const candidateIndices = new Set<number>();
+  for (const idx of ownedIndices) {
+    candidateIndices.add(idx);
+    const neighbors = adjacency.get(idx) ?? [];
+    for (const n of neighbors) {
+      candidateIndices.add(n);
+    }
+  }
 
   const submittableLanguageIds = new Set<number>();
 
-  for (const index of reachableIndices) {
+  candidateIndices.forEach((index) => {
     const placement = placements[index];
-    if (!placement) continue;
+    if (!placement) return;
 
     const kind: RawCellKind = placement.kind ?? "PLAYABLE";
-    if (kind !== "PLAYABLE") continue;
+    if (kind !== "PLAYABLE") return;
 
     if (typeof placement.languageId === "number") {
       submittableLanguageIds.add(placement.languageId);
     }
-  }
+  });
 
   return Array.from(submittableLanguageIds.values()).sort((a, b) => a - b);
 }
