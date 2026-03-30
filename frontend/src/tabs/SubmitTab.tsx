@@ -86,7 +86,6 @@ export function SubmitTab() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-User-Id": "1",
         },
         body: JSON.stringify({
           code,

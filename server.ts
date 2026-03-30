@@ -1,4 +1,5 @@
 import http from "http";
+import crypto from "crypto";
 import { submitCode } from "./function/submitCode.js";
 import { runSubmission } from "./function/runSubmission.js";
 import { getSubmissions } from "./function/getSubmissions.js";
@@ -8,19 +9,54 @@ import { testCode } from "./function/testCode.js";
 import { getLanguages } from "./function/getLanguages.js";
 import { getSubmissionDetail } from "./function/getSubmissionDetail.js";
 import { getSubmittableLanguageIdsForTeam } from "./function/getSubmittableLanguages.js";
+import { getUserInfo, verifyUserLogin } from "./function/authUser.js";
 
 const PORT = Number(process.env.PORT) || 3000;
 
-function sendJson(res: http.ServerResponse, status: number, body: unknown) {
+const sessions = new Map<string, number>(); // sid -> userId
+
+function sendJson(
+  res: http.ServerResponse,
+  status: number,
+  body: unknown,
+  extraHeaders: http.OutgoingHttpHeaders = {},
+) {
   const data = JSON.stringify(body);
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(data),
+    ...extraHeaders,
   });
   res.end(data);
 }
 
+function parseCookies(req: http.IncomingMessage): Record<string, string> {
+  const header = req.headers["cookie"];
+  if (!header) return {};
+
+  const cookies: Record<string, string> = {};
+  const parts = header.split(";");
+  for (const part of parts) {
+    const [name, ...rest] = part.trim().split("=");
+    if (!name) continue;
+    const value = rest.join("=");
+    cookies[name] = decodeURIComponent(value ?? "");
+  }
+  return cookies;
+}
+
 function getCurrentUserId(req: http.IncomingMessage): number | null {
+  // 1. Cookie によるセッション
+  const cookies = parseCookies(req);
+  const sid = cookies["sid"];
+  if (sid) {
+    const userId = sessions.get(sid);
+    if (typeof userId === "number" && userId > 0) {
+      return userId;
+    }
+  }
+
+  // 2. 互換性のため X-User-Id ヘッダも見る（開発用）
   const raw = req.headers["x-user-id"];
   if (!raw) return null;
 
@@ -35,6 +71,71 @@ const server = http.createServer(async (req, res) => {
     if (!req.url) {
       res.statusCode = 400;
       return res.end("Bad Request");
+    }
+
+    // POST /api/login : ログインしてセッションクッキーを発行
+    if (req.method === "POST" && req.url === "/api/login") {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(chunk as Buffer);
+      }
+      const rawBody = Buffer.concat(chunks).toString("utf8");
+
+      let body: any;
+      try {
+        body = rawBody ? JSON.parse(rawBody) : {};
+      } catch {
+        return sendJson(res, 400, { error: "Invalid JSON" });
+      }
+
+      const { name, password } = body ?? {};
+      if (typeof name !== "string" || typeof password !== "string") {
+        return sendJson(res, 400, { error: "name and password are required" });
+      }
+
+      const user = await verifyUserLogin(name, password);
+      if (!user) {
+        return sendJson(res, 401, { error: "Invalid name or password" });
+      }
+
+      const sid = crypto.randomUUID();
+      sessions.set(sid, user.id);
+
+      const cookie = `sid=${encodeURIComponent(sid)}; Path=/; HttpOnly; SameSite=Lax`;
+
+      return sendJson(
+        res,
+        200,
+        { id: user.id, name: user.name, team: user.team },
+        { "Set-Cookie": cookie },
+      );
+    }
+
+    // POST /api/logout : セッションを破棄
+    if (req.method === "POST" && req.url === "/api/logout") {
+      const cookies = parseCookies(req);
+      const sid = cookies["sid"];
+      if (sid) {
+        sessions.delete(sid);
+      }
+      const expiredCookie =
+        "sid=; Path=/; HttpOnly; Max-Age=0; SameSite=Lax";
+      return sendJson(res, 200, { ok: true }, { "Set-Cookie": expiredCookie });
+    }
+
+    // GET /api/me : 現在ログイン中のユーザ情報
+    if (req.method === "GET" && req.url === "/api/me") {
+      const currentUserId = getCurrentUserId(req);
+      if (!currentUserId) {
+        return sendJson(res, 401, { error: "Unauthorized" });
+      }
+
+      const user = await getUserInfo(currentUserId);
+      if (!user) {
+        return sendJson(res, 404, { error: "User not found" });
+      }
+
+      return sendJson(res, 200, user);
     }
 
     // POST /api/submissions : コード提出（認証必須）
@@ -70,11 +171,14 @@ const server = http.createServer(async (req, res) => {
       }
 
       // 0. 盤面ルールに基づく提出可否チェック（暫定実装）
-      //   - boardId: 1 固定
-      //   - teamId: 1 固定
       try {
+        const user = await getUserInfo(currentUserId);
+        if (!user || !user.team) {
+          return sendJson(res, 400, { error: "チーム未所属のため提出できません" });
+        }
+
+        const teamId = user.team.id;
         const boardId = 1;
-        const teamId = 1;
         const submittableLanguageIds = await getSubmittableLanguageIdsForTeam(boardId, teamId);
         if (!submittableLanguageIds.includes(languageId)) {
           return sendJson(res, 400, { error: "提出できません" });
@@ -196,8 +300,18 @@ const server = http.createServer(async (req, res) => {
     // GET /api/submittable_languages : 盤面ルール上、現在提出可能な languageId 一覧（暫定で boardId=1, teamId=1）
     if (req.method === "GET" && req.url.startsWith("/api/submittable_languages")) {
       try {
+        const currentUserId = getCurrentUserId(req);
+        if (!currentUserId) {
+          return sendJson(res, 401, { error: "Unauthorized" });
+        }
+
+        const user = await getUserInfo(currentUserId);
+        if (!user || !user.team) {
+          return sendJson(res, 400, { error: "チーム未所属のため提出可能言語を計算できません" });
+        }
+
         const boardId = 1;
-        const teamId = 1;
+        const teamId = user.team.id;
         const languageIds = await getSubmittableLanguageIdsForTeam(boardId, teamId);
         return sendJson(res, 200, { languageIds });
       } catch (e) {

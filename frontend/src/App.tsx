@@ -4,14 +4,16 @@ import { ProblemTab } from "./tabs/ProblemTab";
 import { SubmitTab } from "./tabs/SubmitTab";
 import { SubmissionsTab } from "./tabs/SubmissionsTab";
 import { CodeTestTab } from "./tabs/CodeTestTab";
+import { UserTab } from "./tabs/UserTab";
 
-type TabId = "board" | "problem" | "submit" | "submissions" | "codeTest";
+type TabId = "board" | "problem" | "submit" | "submissions" | "codeTest" | "user";
 
 function pathnameToTab(pathname: string): TabId {
   if (pathname === "/problem") return "problem";
   if (pathname === "/submit") return "submit";
   if (pathname === "/submissions") return "submissions";
   if (pathname === "/code_test") return "codeTest";
+  if (pathname === "/user") return "user";
   // "/" やその他は盤面扱い
   return "board";
 }
@@ -26,6 +28,8 @@ function tabToPath(tab: TabId): string {
       return "/submissions";
     case "codeTest":
       return "/code_test";
+    case "user":
+      return "/user";
     case "board":
     default:
       return "/board";
@@ -99,6 +103,13 @@ export default function App() {
         >
           コードテスト
         </button>
+        <button
+          type="button"
+          className={activeTab === "user" ? "tab active" : "tab"}
+          onClick={() => navigate("user")}
+        >
+          ユーザ
+        </button>
       </div>
 
       <div className="tab-content">
@@ -107,6 +118,7 @@ export default function App() {
         {activeTab === "submit" && <SubmitTab />}
         {activeTab === "submissions" && <SubmissionsTab />}
         {activeTab === "codeTest" && <CodeTestTab />}
+        {activeTab === "user" && <UserTab />}
       </div>
     </div>
   );

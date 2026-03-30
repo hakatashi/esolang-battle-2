@@ -52,11 +52,7 @@ export function SubmissionsTab() {
 
     (async () => {
       try {
-        const res = await fetch("/api/submissions", {
-          headers: {
-            "X-User-Id": "1",
-          },
-        });
+        const res = await fetch("/api/submissions");
         if (!res.ok) throw new Error(`Failed to load submissions: ${res.status}`);
         const data = (await res.json()) as { submissions: SubmissionSummary[] };
         if (!cancelled) {
@@ -80,11 +76,7 @@ export function SubmissionsTab() {
     setDetailError(null);
     setIsLoadingDetail(true);
     try {
-      const res = await fetch(`/api/submissions/${id}`, {
-        headers: {
-          "X-User-Id": "1",
-        },
-      });
+      const res = await fetch(`/api/submissions/${id}`);
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         const msg = body && typeof body.error === "string" ? body.error : `HTTP ${res.status}`;
