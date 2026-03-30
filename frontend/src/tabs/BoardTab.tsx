@@ -84,9 +84,9 @@ export function BoardTab() {
         return;
       }
 
-      const cellSize = Math.min(maxWidth / board.width, maxHeight / board.height);
-      const boardWidth = cellSize * board.width;
-      const boardHeight = cellSize * board.height;
+      const cellSize = Math.min(maxWidth / board!.width, maxHeight / board!.height);
+      const boardWidth = cellSize * board!.width;
+      const boardHeight = cellSize * board!.height;
 
       setBoardSize({ width: boardWidth, height: boardHeight });
     }
