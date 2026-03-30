@@ -49,9 +49,10 @@ model Contest {
 
 /// Scoreboard state for a contest
 model Board {
-  id           Int     @id @default(autoincrement())
-  contest      Contest @relation(fields: [contestId], references: [id])
-  contestId    Int     @unique
+  id                        Int     @id @default(autoincrement())
+  contest                   Contest @relation(fields: [contestId], references: [id])
+  contestId                 Int     @unique
+  lastProcessedSubmissionId Int?
 
   /// e.g. list of languages shown on the board
   languages              Json
