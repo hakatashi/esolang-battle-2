@@ -7,7 +7,7 @@ type SubmissionSummary = {
   submittedAt: string;
   user: { id: number; name: string; team: { id: number; color: string } | null };
   language: { id: number; name: string; description: string };
-  problem: { id: number };
+  problem: { id: number; title: string };
 };
 
 type ExecutionDto = {
@@ -32,7 +32,7 @@ type SubmissionDetail = {
   score: number;
   submittedAt: string;
   language: { id: number; name: string; description: string };
-  problem: { id: number };
+  problem: { id: number; title: string };
   executions: ExecutionDto[];
 };
 
@@ -197,7 +197,7 @@ export function SubmissionsTab() {
             <th>ID</th>
             <th>ユーザ</th>
             <th>チーム色</th>
-            <th>問題ID</th>
+            <th>問題タイトル</th>
             <th>言語</th>
             <th>コード長</th>
             <th>スコア</th>
@@ -217,7 +217,7 @@ export function SubmissionsTab() {
               <td>{s.id}</td>
               <td>{s.user.name}</td>
               <td>{s.user.team ? s.user.team.color : "-"}</td>
-              <td>{s.problem.id}</td>
+              <td>{s.problem.title}</td>
               <td>{s.language.name}</td>
               <td>{s.codeLength}</td>
               <td>{s.score}</td>
@@ -235,7 +235,7 @@ export function SubmissionsTab() {
         {detail && !isLoadingDetail && (
           <div className="problem-view">
             <h3>
-              提出 {detail.id} の詳細 (問題 {detail.problem.id}, 言語 {detail.language.name})
+              提出 {detail.id} の詳細 (問題 {detail.problem.title} / ID {detail.problem.id}, 言語 {detail.language.name})
             </h3>
             <h4>コード</h4>
             <pre className="problem-statement">{detail.code}</pre>

@@ -8,6 +8,7 @@ type AcceptedLanguage = {
 
 type ProblemDto = {
   id: number;
+  title: string;
   problemStatement: string;
   contestId: number;
   acceptedLanguages: AcceptedLanguage[];
@@ -25,7 +26,13 @@ export function ProblemTab() {
 
     (async () => {
       try {
-        const res = await fetch("/api/problems/1");
+        const res = await fetch("/api/problems");
+        if (res.status === 404) {
+          if (!cancelled) {
+            setProblem(null);
+          }
+          return;
+        }
         if (!res.ok) throw new Error(`Failed to load problem: ${res.status}`);
         const data = (await res.json()) as ProblemDto;
         if (!cancelled) {
@@ -51,7 +58,7 @@ export function ProblemTab() {
 
   return (
     <div className="problem-view">
-      <h2>問題 {problem.id}</h2>
+      <h2>{problem.title} (ID {problem.id})</h2>
       <pre className="problem-statement">{problem.problemStatement}</pre>
       {problem.acceptedLanguages.length > 0 && (
         <div className="problem-languages">

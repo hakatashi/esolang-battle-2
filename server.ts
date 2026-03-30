@@ -4,7 +4,7 @@ import { submitCode } from "./function/submitCode.js";
 import { runSubmission } from "./function/runSubmission.js";
 import { getSubmissions } from "./function/getSubmissions.js";
 import { getBoard } from "./function/getBoard.js";
-import { getProblem } from "./function/getProblem.js";
+import { getProblem, getFirstProblemByIdAsc } from "./function/getProblem.js";
 import { testCode } from "./function/testCode.js";
 import { getLanguages } from "./function/getLanguages.js";
 import { getSubmissionDetail } from "./function/getSubmissionDetail.js";
@@ -341,17 +341,20 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 400, { error: "Invalid JSON" });
       }
 
-      const { contestId, problemStatement } = body ?? {};
+      const { contestId, title, problemStatement } = body ?? {};
       const contestIdNum = Number(contestId);
       if (!Number.isFinite(contestIdNum) || contestIdNum <= 0) {
         return sendJson(res, 400, { error: "contestId must be a positive number" });
+      }
+      if (typeof title !== "string" || !title.trim()) {
+        return sendJson(res, 400, { error: "title is required" });
       }
       if (typeof problemStatement !== "string" || !problemStatement.trim()) {
         return sendJson(res, 400, { error: "problemStatement is required" });
       }
 
       try {
-        const problem = await createProblemForAdmin(contestIdNum, problemStatement);
+        const problem = await createProblemForAdmin(contestIdNum, title, problemStatement);
         return sendJson(res, 201, { problem });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -395,17 +398,20 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 400, { error: "Invalid JSON" });
       }
 
-      const { contestId, problemStatement } = body ?? {};
+      const { contestId, title, problemStatement } = body ?? {};
       const contestIdNum = Number(contestId);
       if (!Number.isFinite(contestIdNum) || contestIdNum <= 0) {
         return sendJson(res, 400, { error: "contestId must be a positive number" });
+      }
+      if (typeof title !== "string" || !title.trim()) {
+        return sendJson(res, 400, { error: "title is required" });
       }
       if (typeof problemStatement !== "string" || !problemStatement.trim()) {
         return sendJson(res, 400, { error: "problemStatement is required" });
       }
 
       try {
-        const problem = await updateProblemForAdmin(problemId, contestIdNum, problemStatement);
+        const problem = await updateProblemForAdmin(problemId, contestIdNum, title, problemStatement);
         return sendJson(res, 200, { problem });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -714,6 +720,15 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { languages });
     }
 
+    // GET /api/problems : 最初の問題を取得（ID 昇順の先頭）
+    if (req.method === "GET" && req.url === "/api/problems") {
+      const problem = await getFirstProblemByIdAsc();
+      if (!problem) {
+        return sendJson(res, 404, { error: "Problem not found" });
+      }
+      return sendJson(res, 200, problem);
+    }
+
     // GET /api/problems/:id : 問題文取得（とりあえず閲覧用）
     if (req.method === "GET" && req.url.startsWith("/api/problems/")) {
       const url = new URL(req.url, `http://localhost:${PORT}`);
@@ -727,6 +742,9 @@ const server = http.createServer(async (req, res) => {
       }
 
       const problem = await getProblem(problemId);
+      if (!problem) {
+        return sendJson(res, 404, { error: "Problem not found" });
+      }
       return sendJson(res, 200, problem);
     }
 

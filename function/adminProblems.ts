@@ -16,6 +16,7 @@ const prisma = new PrismaClient({ adapter });
 export type AdminProblem = {
   id: number;
   contestId: number;
+  title: string;
   problemStatement: string;
 };
 
@@ -27,12 +28,14 @@ export async function listProblemsForAdmin(): Promise<AdminProblem[]> {
   return problems.map((p) => ({
     id: p.id,
     contestId: p.contestId,
+    title: p.title,
     problemStatement: p.problemStatement,
   }));
 }
 
 export async function createProblemForAdmin(
   contestId: number,
+  title: string,
   problemStatement: string,
 ): Promise<AdminProblem> {
   const contest = await prisma.contest.findUnique({ where: { id: contestId } });
@@ -45,6 +48,7 @@ export async function createProblemForAdmin(
   const created = await prisma.problem.create({
     data: {
       contestId,
+      title,
       problemStatement,
       acceptedLanguages: {
         connect: languages.map((l) => ({ id: l.id })),
@@ -55,6 +59,7 @@ export async function createProblemForAdmin(
   return {
     id: created.id,
     contestId: created.contestId,
+    title: created.title,
     problemStatement: created.problemStatement,
   };
 }
@@ -62,6 +67,7 @@ export async function createProblemForAdmin(
 export async function updateProblemForAdmin(
   id: number,
   contestId: number,
+  title: string,
   problemStatement: string,
 ): Promise<AdminProblem> {
   const contest = await prisma.contest.findUnique({ where: { id: contestId } });
@@ -73,6 +79,7 @@ export async function updateProblemForAdmin(
     where: { id },
     data: {
       contestId,
+      title,
       problemStatement,
     },
   });
@@ -80,6 +87,7 @@ export async function updateProblemForAdmin(
   return {
     id: updated.id,
     contestId: updated.contestId,
+    title: updated.title,
     problemStatement: updated.problemStatement,
   };
 }

@@ -55,6 +55,7 @@ export async function getSubmissionDetail(
     },
     problem: {
       id: submission.problem.id,
+      title: submission.problem.title,
     },
     executions: submission.executions.map((e) => ({
       testcaseId: e.testcaseId,

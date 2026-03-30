@@ -16,6 +16,7 @@ type TeamRow = {
 type ProblemRow = {
   id: number;
   contestId: number;
+  title: string;
   problemStatement: string;
 };
 
@@ -29,8 +30,9 @@ export function AdminUsersTab() {
   const [problemForm, setProblemForm] = React.useState<{
     id: number | null;
     contestId: string;
+    title: string;
     problemStatement: string;
-  }>({ id: null, contestId: "", problemStatement: "" });
+  }>({ id: null, contestId: "", title: "", problemStatement: "" });
   const [isSavingProblem, setIsSavingProblem] = React.useState(false);
 
   React.useEffect(() => {
@@ -188,6 +190,7 @@ export function AdminUsersTab() {
             }
             const payload = {
               contestId: contestIdNum,
+              title: problemForm.title,
               problemStatement: problemForm.problemStatement,
             };
 
@@ -225,7 +228,7 @@ export function AdminUsersTab() {
               );
             }
 
-            setProblemForm({ id: null, contestId: "", problemStatement: "" });
+            setProblemForm({ id: null, contestId: "", title: "", problemStatement: "" });
           } catch (e2) {
             setError(e2 instanceof Error ? e2.message : String(e2));
           } finally {
@@ -249,6 +252,18 @@ export function AdminUsersTab() {
         </div>
         <div className="form-row">
           <label>
+            タイトル:
+            <input
+              type="text"
+              value={problemForm.title}
+              onChange={(e) =>
+                setProblemForm((f) => ({ ...f, title: e.target.value }))
+              }
+            />
+          </label>
+        </div>
+        <div className="form-row">
+          <label>
             問題文:
             <textarea
               rows={6}
@@ -262,14 +277,20 @@ export function AdminUsersTab() {
         <div className="form-row" style={{ gap: 8 }}>
           <button
             type="submit"
-            disabled={!problemForm.contestId || !problemForm.problemStatement.trim()}
+            disabled={
+              !problemForm.contestId ||
+              !problemForm.title.trim() ||
+              !problemForm.problemStatement.trim()
+            }
           >
             {problemForm.id === null ? "新規追加" : "更新"}
           </button>
           {problemForm.id !== null && (
             <button
               type="button"
-              onClick={() => setProblemForm({ id: null, contestId: "", problemStatement: "" })}
+              onClick={() =>
+                setProblemForm({ id: null, contestId: "", title: "", problemStatement: "" })
+              }
             >
               キャンセル
             </button>
@@ -283,6 +304,7 @@ export function AdminUsersTab() {
             <tr>
               <th>ID</th>
               <th>Contest ID</th>
+              <th>タイトル</th>
               <th>問題文（先頭だけ表示）</th>
               <th>操作</th>
             </tr>
@@ -292,6 +314,7 @@ export function AdminUsersTab() {
               <tr key={p.id}>
                 <td>{p.id}</td>
                 <td>{p.contestId}</td>
+                <td>{p.title}</td>
                 <td>{p.problemStatement.slice(0, 40)}{p.problemStatement.length > 40 ? "..." : ""}</td>
                 <td>
                   <button
@@ -300,6 +323,7 @@ export function AdminUsersTab() {
                       setProblemForm({
                         id: p.id,
                         contestId: String(p.contestId),
+                        title: p.title,
                         problemStatement: p.problemStatement,
                       })
                     }
