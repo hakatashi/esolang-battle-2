@@ -16,6 +16,7 @@ const prisma = new PrismaClient({ adapter });
 export type UserInfo = {
   id: number;
   name: string;
+  isAdmin: boolean;
   team: { id: number; color: string } | null;
 };
 
@@ -33,6 +34,7 @@ export async function verifyUserLogin(name: string, password: string): Promise<U
   return {
     id: user.id,
     name: user.name,
+    isAdmin: Boolean(user.isAdmin),
     team: user.team ? { id: user.team.id, color: user.team.color } : null,
   };
 }
@@ -48,6 +50,7 @@ export async function getUserInfo(userId: number): Promise<UserInfo | null> {
   return {
     id: user.id,
     name: user.name,
+    isAdmin: Boolean(user.isAdmin),
     team: user.team ? { id: user.team.id, color: user.team.color } : null,
   };
 }

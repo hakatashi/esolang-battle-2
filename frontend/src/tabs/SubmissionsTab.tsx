@@ -35,10 +35,25 @@ type SubmissionDetail = {
   executions: ExecutionDto[];
 };
 
+type MeInfo = {
+  id: number;
+  name: string;
+  isAdmin: boolean;
+  team: { id: number; color: string } | null;
+};
+
+type Scope = "self" | "team" | "all";
+
 export function SubmissionsTab() {
+  const [me, setMe] = React.useState<MeInfo | null>(null);
+  const [meError, setMeError] = React.useState<string | null>(null);
+  const [isLoadingMe, setIsLoadingMe] = React.useState(false);
+
   const [submissions, setSubmissions] = React.useState<SubmissionSummary[] | null>(null);
   const [submissionsError, setSubmissionsError] = React.useState<string | null>(null);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = React.useState(false);
+
+  const [scope, setScope] = React.useState<Scope>("self");
 
   const [selectedId, setSelectedId] = React.useState<number | null>(null);
   const [detail, setDetail] = React.useState<SubmissionDetail | null>(null);
@@ -47,20 +62,63 @@ export function SubmissionsTab() {
 
   React.useEffect(() => {
     let cancelled = false;
+    setIsLoadingMe(true);
+    setMeError(null);
+
+    (async () => {
+      try {
+        const res = await fetch("/api/me");
+        if (res.status === 401) {
+          if (!cancelled) {
+            setMe(null);
+          }
+        } else if (!res.ok) {
+          throw new Error(`Failed to load current user: ${res.status}`);
+        } else {
+          const data = (await res.json()) as MeInfo;
+          if (!cancelled) {
+            setMe(data);
+          }
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setMeError(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (!cancelled) setIsLoadingMe(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
     setIsLoadingSubmissions(true);
     setSubmissionsError(null);
 
     (async () => {
       try {
-        const res = await fetch("/api/submissions");
-        if (!res.ok) throw new Error(`Failed to load submissions: ${res.status}`);
-        const data = (await res.json()) as { submissions: SubmissionSummary[] };
+        const params = new URLSearchParams();
+        params.set("scope", scope);
+        const res = await fetch(`/api/submissions?${params.toString()}`);
+        const body = await res.json().catch(() => null);
+        if (!res.ok) {
+          const msg = body && typeof body.error === "string"
+            ? body.error
+            : `Failed to load submissions: ${res.status}`;
+          throw new Error(msg);
+        }
+        const data = body as { submissions: SubmissionSummary[] };
         if (!cancelled) {
           setSubmissions(data.submissions);
         }
       } catch (e) {
         if (!cancelled) {
           setSubmissionsError(e instanceof Error ? e.message : String(e));
+          setSubmissions(null);
         }
       } finally {
         if (!cancelled) setIsLoadingSubmissions(false);
@@ -70,7 +128,7 @@ export function SubmissionsTab() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [scope]);
 
   async function loadDetail(id: number) {
     setDetailError(null);
@@ -92,13 +150,46 @@ export function SubmissionsTab() {
     }
   }
 
-  if (isLoadingSubmissions) return <div>Loading submissions...</div>;
-  if (submissionsError)
-    return <div style={{ color: "#b00020" }}>Error: {submissionsError}</div>;
-  if (!submissions || submissions.length === 0) return <div>提出はまだありません。</div>;
-
   return (
     <div style={{ width: "100%", maxWidth: 900 }}>
+        <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => setScope("self")}
+            disabled={scope === "self" || isLoadingSubmissions}
+          >
+            自分の提出
+          </button>
+          <button
+            type="button"
+            onClick={() => setScope("team")}
+            disabled={scope === "team" || isLoadingSubmissions || !me || !me.team}
+          >
+            自チームの提出
+          </button>
+          {me && me.isAdmin && (
+            <button
+              type="button"
+              onClick={() => setScope("all")}
+              disabled={scope === "all" || isLoadingSubmissions}
+            >
+              全ての提出
+            </button>
+          )}
+        </div>
+
+        {isLoadingMe && <div>現在のユーザ情報を読み込み中...</div>}
+        {meError && <div style={{ color: "#b00020" }}>User Error: {meError}</div>}
+
+        {isLoadingSubmissions && <div>Loading submissions...</div>}
+        {submissionsError && (
+          <div style={{ color: "#b00020" }}>Error: {submissionsError}</div>
+        )}
+        {!isLoadingSubmissions && !submissionsError && (!submissions || submissions.length === 0) && (
+          <div>提出はまだありません。</div>
+        )}
+
+        {submissions && submissions.length > 0 && (
       <table className="submissions-table">
         <thead>
           <tr>
@@ -130,6 +221,8 @@ export function SubmissionsTab() {
           ))}
         </tbody>
       </table>
+
+      )}
 
       <div style={{ marginTop: 16 }}>
         {isLoadingDetail && <div>Loading detail...</div>}

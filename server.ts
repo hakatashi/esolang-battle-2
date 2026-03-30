@@ -230,7 +230,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, result);
     }
 
-    // GET /api/submissions / /api/submissions/:id : Submission 一覧 or 詳細（自分の分のみ）
+    // GET /api/submissions / /api/submissions/:id : Submission 一覧 or 詳細
     if (req.method === "GET" && req.url.startsWith("/api/submissions")) {
       const currentUserId = getCurrentUserId(req);
       if (!currentUserId) {
@@ -255,7 +255,12 @@ const server = http.createServer(async (req, res) => {
           return sendJson(res, 400, { error: "Invalid submission id" });
         }
 
-        const detail = await getSubmissionDetail(submissionId, currentUserId);
+        const user = await getUserInfo(currentUserId);
+        if (!user) {
+          return sendJson(res, 404, { error: "User not found" });
+        }
+
+        const detail = await getSubmissionDetail(submissionId, currentUserId, user.isAdmin);
         if (!detail) {
           return sendJson(res, 404, { error: "Submission not found" });
         }
@@ -266,13 +271,40 @@ const server = http.createServer(async (req, res) => {
       // 一覧: /api/submissions
       const problemIdParam = url.searchParams.get("problemId");
       const languageIdParam = url.searchParams.get("languageId");
+      const scopeParam = url.searchParams.get("scope");
 
       const problemId = toNumber(problemIdParam);
       const languageId = toNumber(languageIdParam);
+      const scope = scopeParam === "team" || scopeParam === "all" ? scopeParam : "self";
 
-      const filter: { userId?: number; problemId?: number; languageId?: number } = {
-        userId: currentUserId,
+      const user = await getUserInfo(currentUserId);
+      if (!user) {
+        return sendJson(res, 404, { error: "User not found" });
+      }
+
+      type SubmissionsFilter = {
+        userId?: number;
+        teamId?: number;
+        problemId?: number;
+        languageId?: number;
       };
+
+      const filter: SubmissionsFilter = {};
+
+      if (scope === "self") {
+        filter.userId = currentUserId;
+      } else if (scope === "team") {
+        if (!user.team) {
+          return sendJson(res, 400, { error: "チーム未所属のためチーム提出は参照できません" });
+        }
+        filter.teamId = user.team.id;
+      } else if (scope === "all") {
+        if (!user.isAdmin) {
+          return sendJson(res, 403, { error: "管理者のみ全ての提出を参照できます" });
+        }
+        // no additional filter: all submissions
+      }
+
       if (typeof problemId === "number") filter.problemId = problemId;
       if (typeof languageId === "number") filter.languageId = languageId;
 

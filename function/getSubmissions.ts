@@ -15,6 +15,7 @@ const prisma = new PrismaClient({ adapter });
 
 export type GetSubmissionsFilter = {
   userId?: number;
+  teamId?: number;
   problemId?: number;
   languageId?: number;
 };
@@ -24,6 +25,9 @@ export async function getSubmissions(filter: GetSubmissionsFilter = {}) {
 
   if (typeof filter.userId === "number") {
     where.userId = filter.userId;
+  }
+  if (typeof filter.teamId === "number") {
+    where.user = { ...(where.user ?? {}), teamId: filter.teamId };
   }
   if (typeof filter.problemId === "number") {
     where.problemId = filter.problemId;

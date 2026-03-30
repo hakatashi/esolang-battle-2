@@ -13,7 +13,11 @@ const pool = new Pool({ connectionString: databaseUrl });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-export async function getSubmissionDetail(submissionId: number, userId: number) {
+export async function getSubmissionDetail(
+  submissionId: number,
+  userId: number,
+  isAdmin: boolean,
+) {
   const submission = await prisma.submission.findUnique({
     where: { id: submissionId },
     include: {
@@ -30,7 +34,11 @@ export async function getSubmissionDetail(submissionId: number, userId: number) 
     },
   });
 
-  if (!submission || submission.userId !== userId) {
+  if (!submission) {
+    return null;
+  }
+
+  if (!isAdmin && submission.userId !== userId) {
     return null;
   }
 
