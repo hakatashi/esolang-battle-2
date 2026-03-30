@@ -36,6 +36,10 @@ export function BoardTab() {
   const [boardSize, setBoardSize] = React.useState<{ width: number; height: number } | null>(
     null,
   );
+  const [submittableLanguageIds, setSubmittableLanguageIds] = React.useState<number[] | null>(
+    null,
+  );
+  const [toastMessage, setToastMessage] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -58,6 +62,32 @@ export function BoardTab() {
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : String(e));
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/submittable_languages");
+        if (!res.ok) {
+          throw new Error(`Failed to load submittable languages: ${res.status}`);
+        }
+        const data = (await res.json()) as { languageIds: number[] };
+        if (!cancelled) {
+          setSubmittableLanguageIds(data.languageIds ?? []);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          // エラー時は何も表示せず、クライアント側チェックをスキップ
+          setSubmittableLanguageIds(null);
         }
       }
     })();
@@ -125,6 +155,17 @@ export function BoardTab() {
           style={cell.languageId !== null ? { cursor: "pointer" } : undefined}
           onClick={() => {
             if (cell.languageId === null) return;
+
+            if (Array.isArray(submittableLanguageIds)) {
+              if (!submittableLanguageIds.includes(cell.languageId)) {
+                setToastMessage("ルール上このマスの言語には提出できません");
+                setTimeout(() => {
+                  setToastMessage(null);
+                }, 2000);
+                return;
+              }
+            }
+
             const url = new URL(window.location.href);
             url.pathname = "/submit";
             url.searchParams.set("languageId", String(cell.languageId));
@@ -142,6 +183,25 @@ export function BoardTab() {
           </div>
         </div>
       ))}
+
+      {toastMessage && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: "rgba(0,0,0,0.8)",
+            color: "#fff",
+            padding: "8px 16px",
+            borderRadius: 4,
+            zIndex: 1000,
+            fontSize: 14,
+          }}
+        >
+          {toastMessage}
+        </div>
+      )}
     </div>
   );
 }

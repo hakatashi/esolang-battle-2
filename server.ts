@@ -7,6 +7,7 @@ import { getProblem } from "./function/getProblem.js";
 import { testCode } from "./function/testCode.js";
 import { getLanguages } from "./function/getLanguages.js";
 import { getSubmissionDetail } from "./function/getSubmissionDetail.js";
+import { getSubmittableLanguageIdsForTeam } from "./function/getSubmittableLanguages.js";
 
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -66,6 +67,21 @@ const server = http.createServer(async (req, res) => {
       }
       if (typeof problemId !== "number") {
         return sendJson(res, 400, { error: "problemId must be a number" });
+      }
+
+      // 0. 盤面ルールに基づく提出可否チェック（暫定実装）
+      //   - boardId: 1 固定
+      //   - teamId: 1 固定
+      try {
+        const boardId = 1;
+        const teamId = 1;
+        const submittableLanguageIds = await getSubmittableLanguageIdsForTeam(boardId, teamId);
+        if (!submittableLanguageIds.includes(languageId)) {
+          return sendJson(res, 400, { error: "提出できません" });
+        }
+      } catch (e) {
+        console.error("failed to check submittable languages", e);
+        return sendJson(res, 500, { error: "この言語には現在提出できません" });
       }
 
       // 1. Submission を作成
@@ -175,6 +191,19 @@ const server = http.createServer(async (req, res) => {
 
       const board = await getBoard(boardId);
       return sendJson(res, 200, board);
+    }
+
+    // GET /api/submittable_languages : 盤面ルール上、現在提出可能な languageId 一覧（暫定で boardId=1, teamId=1）
+    if (req.method === "GET" && req.url.startsWith("/api/submittable_languages")) {
+      try {
+        const boardId = 1;
+        const teamId = 1;
+        const languageIds = await getSubmittableLanguageIdsForTeam(boardId, teamId);
+        return sendJson(res, 200, { languageIds });
+      } catch (e) {
+        console.error("failed to get submittable languages", e);
+        return sendJson(res, 500, { error: "Failed to get submittable languages" });
+      }
     }
 
     // GET /api/languages : 使用可能な言語一覧
