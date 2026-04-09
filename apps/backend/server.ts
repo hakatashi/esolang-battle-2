@@ -11,6 +11,8 @@ import { z } from 'zod';
 import { UserInfo } from '@esolang-battle/common';
 
 import { getContests } from './function/getContests.js';
+import { submitCode } from './function/submitCode.js';
+import { submissionQueue } from './queue.js';
 
 // --- tRPC Router ---
 const appRouter = router({
@@ -20,7 +22,25 @@ const appRouter = router({
   getContests: publicProcedure.query(async ({ ctx }) => {
     return await getContests(ctx.prisma);
   }),
-  // 今後、既存の関数をここに追加していく
+  submitCode: protectedProcedure
+    .input(z.object({
+      code: z.string(),
+      languageId: z.number(),
+      problemId: z.number(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const submission = await submitCode(ctx.prisma, {
+        ...input,
+        userId: ctx.user.id,
+      });
+
+      // BullMQ にジョブを投入
+      await submissionQueue.add('evaluate', {
+        submissionId: submission.id,
+      });
+
+      return submission;
+    }),
 });
 
 export type AppRouter = typeof appRouter;
