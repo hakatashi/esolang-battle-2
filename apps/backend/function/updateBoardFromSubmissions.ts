@@ -1,18 +1,5 @@
-import "dotenv/config";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../generated/prisma/client.js";
 import type { OwnerColor } from "./getBoard.js";
-
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL environment variable is not set");
-}
-
-const pool = new Pool({ connectionString: databaseUrl });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+import type { PrismaClient } from "../generated/prisma/client.js";
 
 /**
  * Board.lastProcessedSubmissionId より新しい Submission を反映して
@@ -24,19 +11,18 @@ const prisma = new PrismaClient({ adapter });
  * - そのとき、その言語の色を Submission.user.team.color に更新する。
  * - チーム色が "red" / "blue" 以外の場合は "neutral" として扱う。
  */
-export async function updateBoardFromSubmissions(boardId: number): Promise<void> {
+export async function updateBoardFromSubmissions(prisma: PrismaClient, contestId: number): Promise<void> {
   const board = await prisma.board.findUnique({
-    where: { id: boardId },
+    where: { contestId: contestId },
     include: {
       contest: true,
     },
   });
 
   if (!board) {
-    throw new Error(`Board ${boardId} not found`);
+    throw new Error(`Board for contest ${contestId} not found`);
   }
 
-  const contestId = board.contestId;
   const lastProcessedId = board.lastProcessedSubmissionId ?? 0;
 
   // まだ処理していない Submission をすべて取得（この Board の contest に属するものだけ）。
@@ -95,7 +81,7 @@ export async function updateBoardFromSubmissions(boardId: number): Promise<void>
   }
 
   await prisma.board.update({
-    where: { id: boardId },
+    where: { contestId: contestId },
     data: {
       scoreOfLanguages,
       colorOfLanguages,
@@ -111,19 +97,17 @@ export async function updateBoardFromSubmissions(boardId: number): Promise<void>
  * - Board.scoreOfLanguages / Board.colorOfLanguages を空の状態から再構築する。
  * - lastProcessedSubmissionId を「処理した Submission の最大 id」に更新する（Submission が無ければ null）。
  */
-export async function recomputeBoardFromSubmissions(boardId: number): Promise<void> {
+export async function recomputeBoardFromSubmissions(prisma: PrismaClient, contestId: number): Promise<void> {
   const board = await prisma.board.findUnique({
-    where: { id: boardId },
+    where: { contestId: contestId },
     include: {
       contest: true,
     },
   });
 
   if (!board) {
-    throw new Error(`Board ${boardId} not found`);
+    throw new Error(`Board for contest ${contestId} not found`);
   }
-
-  const contestId = board.contestId;
 
   const submissions = await prisma.submission.findMany({
     where: {
@@ -146,7 +130,7 @@ export async function recomputeBoardFromSubmissions(boardId: number): Promise<vo
 
   if (submissions.length === 0) {
     await prisma.board.update({
-      where: { id: boardId },
+      where: { contestId: contestId },
       data: {
         scoreOfLanguages: {},
         colorOfLanguages: {},
@@ -184,39 +168,11 @@ export async function recomputeBoardFromSubmissions(boardId: number): Promise<vo
   }
 
   await prisma.board.update({
-    where: { id: boardId },
+    where: { contestId: contestId },
     data: {
       scoreOfLanguages,
       colorOfLanguages,
       lastProcessedSubmissionId: maxSeenSubmissionId,
     },
-  });
-}
-
-async function main() {
-  const [, , idArg] = process.argv;
-  if (!idArg) {
-    console.error("Usage: npx tsx function/updateBoardFromSubmissions.ts <boardId>");
-    process.exit(1);
-  }
-
-  const boardId = Number(idArg);
-  if (!Number.isInteger(boardId)) {
-    console.error("boardId must be an integer");
-    process.exit(1);
-  }
-
-  try {
-    await updateBoardFromSubmissions(boardId);
-  } finally {
-    await prisma.$disconnect();
-  }
-}
-
-// CLI 実行用
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((err) => {
-    console.error(err);
-    process.exit(1);
   });
 }

@@ -1,31 +1,28 @@
-import "dotenv/config";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client.js";
-
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL environment variable is not set");
-}
-
-const pool = new Pool({ connectionString: databaseUrl });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
 
 export type ProblemSummary = {
   id: number;
+  contestId: number;
   title: string;
+  problemStatement: string;
 };
 
-export async function listProblems(): Promise<ProblemSummary[]> {
+export async function listProblems(prisma: PrismaClient, contestId?: number): Promise<ProblemSummary[]> {
   const problems = await prisma.problem.findMany({
+    where: contestId ? { contestId } : undefined,
     orderBy: { id: "asc" },
     select: {
       id: true,
+      contestId: true,
       title: true,
+      problemStatement: true,
     },
   });
 
-  return problems.map((p) => ({ id: p.id, title: p.title }));
+  return problems.map((p) => ({
+    id: p.id,
+    contestId: p.contestId,
+    title: p.title,
+    problemStatement: p.problemStatement,
+  }));
 }

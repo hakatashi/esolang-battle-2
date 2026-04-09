@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { Worker, Job } from 'bullmq';
-import IORedis from 'ioredis';
+import Redis from 'ioredis';
 import { PrismaClient } from '../../backend/generated/prisma/client.js';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -28,13 +28,13 @@ type TestCaseWithIO = {
 
 // --- Infrastructure ---
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/esolang_battle_2?schema=public';
 
 if (!databaseUrl) {
   throw new Error("DATABASE_URL environment variable is not set");
 }
 
-const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
+const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
 const pool = new Pool({ connectionString: databaseUrl });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });

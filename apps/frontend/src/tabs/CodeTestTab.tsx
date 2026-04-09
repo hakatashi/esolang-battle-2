@@ -1,94 +1,35 @@
 import React from "react";
-
-type LanguageSummary = {
-  id: number;
-  name: string;
-  description: string;
-};
-
-type CodeTestResult = {
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-  durationMs: number;
-};
+import { trpc } from "../utils/trpc";
 
 export function CodeTestTab({ contestId }: { contestId: number }) {
   void contestId; // contest 非依存だがインターフェイスを揃える
-  const [languages, setLanguages] = React.useState<LanguageSummary[] | null>(null);
-  const [languagesError, setLanguagesError] = React.useState<string | null>(null);
-  const [isLoadingLanguages, setIsLoadingLanguages] = React.useState(false);
+
+  const { data: languages, isLoading: isLoadingLanguages, error: languagesError } = trpc.getLanguages.useQuery();
+  const testCodeMutation = trpc.testCode.useMutation();
 
   const [selectedLanguageId, setSelectedLanguageId] = React.useState<string>("");
   const [testCodeText, setTestCodeText] = React.useState("");
-  const [isRunningTest, setIsRunningTest] = React.useState(false);
-  const [testResult, setTestResult] = React.useState<CodeTestResult | null>(null);
-  const [testError, setTestError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    let cancelled = false;
-    setIsLoadingLanguages(true);
-    setLanguagesError(null);
-
-    (async () => {
-      try {
-        const res = await fetch("/api/languages");
-        if (!res.ok) throw new Error(`Failed to load languages: ${res.status}`);
-        const data = (await res.json()) as { languages: LanguageSummary[] };
-        if (!cancelled) {
-          setLanguages(data.languages);
-          if (data.languages.length > 0) {
-            setSelectedLanguageId(String(data.languages[0].id));
-          }
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setLanguagesError(e instanceof Error ? e.message : String(e));
-        }
-      } finally {
-        if (!cancelled) setIsLoadingLanguages(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (languages && languages.length > 0 && !selectedLanguageId) {
+      setSelectedLanguageId(String(languages[0].id));
+    }
+  }, [languages, selectedLanguageId]);
 
   async function handleRunTest(e: React.FormEvent) {
     e.preventDefault();
-    setTestError(null);
-    setTestResult(null);
-    setIsRunningTest(true);
     try {
       const languageId = Number(selectedLanguageId);
       if (!Number.isFinite(languageId) || languageId <= 0) {
         throw new Error("languageId must be a positive number");
       }
 
-      const res = await fetch("/api/code-test", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          code: testCodeText,
-          languageId,
-        }),
+      await testCodeMutation.mutateAsync({
+        code: testCodeText,
+        languageId,
       });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        const msg = body && typeof body.error === "string" ? body.error : `HTTP ${res.status}`;
-        throw new Error(`Failed to run test: ${msg}`);
-      }
-
-      const body = (await res.json()) as CodeTestResult;
-      setTestResult(body);
     } catch (e) {
-      setTestError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setIsRunningTest(false);
+      console.error(e);
     }
   }
 
@@ -97,7 +38,7 @@ export function CodeTestTab({ contestId }: { contestId: number }) {
   }
 
   if (languagesError) {
-    return <div style={{ color: "#b00020" }}>Error: {languagesError}</div>;
+    return <div style={{ color: "#b00020" }}>Error: {languagesError.message}</div>;
   }
 
   if (!languages || languages.length === 0) {
@@ -132,24 +73,24 @@ export function CodeTestTab({ contestId }: { contestId: number }) {
         </label>
       </div>
       <div className="form-row">
-        <button type="submit" disabled={isRunningTest || !testCodeText.trim()}>
-          {isRunningTest ? "実行中..." : "テスト実行"}
+        <button type="submit" disabled={testCodeMutation.isPending || !testCodeText.trim()}>
+          {testCodeMutation.isPending ? "実行中..." : "テスト実行"}
         </button>
       </div>
-      {testError && (
+      {testCodeMutation.error && (
         <div className="submit-message" style={{ color: "#b00020" }}>
-          {testError}
+          {testCodeMutation.error.message}
         </div>
       )}
-      {testResult && (
+      {testCodeMutation.data && (
         <div className="problem-view" style={{ marginTop: "12px" }}>
           <h3>実行結果</h3>
-          <div>exitCode: {testResult.exitCode}</div>
-          <div>duration: {testResult.durationMs} ms</div>
+          <div>exitCode: {testCodeMutation.data.exitCode}</div>
+          <div>duration: {testCodeMutation.data.durationMs} ms</div>
           <h4>stdout</h4>
-          <pre className="problem-statement">{testResult.stdout || "(empty)"}</pre>
+          <pre className="problem-statement">{testCodeMutation.data.stdout || "(empty)"}</pre>
           <h4>stderr</h4>
-          <pre className="problem-statement">{testResult.stderr || "(empty)"}</pre>
+          <pre className="problem-statement">{testCodeMutation.data.stderr || "(empty)"}</pre>
         </div>
       )}
     </form>

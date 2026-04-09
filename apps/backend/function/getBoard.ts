@@ -1,17 +1,4 @@
-import "dotenv/config";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client.js";
-
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL environment variable is not set");
-}
-
-const pool = new Pool({ connectionString: databaseUrl });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
 
 export type OwnerColor = "red" | "blue" | "neutral";
 
@@ -46,23 +33,21 @@ type RawLanguagePlacement = {
 type RawColorOfLanguages = Record<string, OwnerColor>;
 type RawScoresOfLanguages = Record<string, number>;
 
-// 将来的には HONEYCOMB など他の viewerType にも対応したいが、
-// 現状は GRID の場合のみ整形された Board 情報を返す。
-export async function getBoard(boardId: number): Promise<BoardDto> {
+export async function getBoard(prisma: PrismaClient, contestId: number): Promise<BoardDto> {
   const board = await prisma.board.findUnique({
-    where: { id: boardId },
+    where: { contestId: contestId },
     include: {
       contest: true,
     },
   });
 
   if (!board) {
-    throw new Error(`Board ${boardId} not found`);
+    throw new Error(`Board for contest ${contestId} not found`);
   }
 
   if (board.contest.viewerType !== "GRID") {
     throw new Error(
-      `Board ${boardId} is not supported yet (viewerType=${board.contest.viewerType})`,
+      `Board for contest ${contestId} is not supported yet (viewerType=${board.contest.viewerType})`,
     );
   }
 

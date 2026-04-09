@@ -1,19 +1,6 @@
-import "dotenv/config";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client.js";
 
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL environment variable is not set");
-}
-
-const pool = new Pool({ connectionString: databaseUrl });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
-
-export async function getProblem(problemId: number) {
+export async function getProblem(prisma: PrismaClient, problemId: number) {
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
     include: {
@@ -39,7 +26,7 @@ export async function getProblem(problemId: number) {
   };
 }
 
-export async function getFirstProblemByIdAsc() {
+export async function getFirstProblemByIdAsc(prisma: PrismaClient) {
   const problem = await prisma.problem.findFirst({
     orderBy: { id: "asc" },
     include: {

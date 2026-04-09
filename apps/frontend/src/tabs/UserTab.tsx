@@ -1,43 +1,16 @@
 import React from "react";
-
-import type { UserInfo } from "@esolang-battle/common";
+import { trpc } from "../utils/trpc";
 
 export function UserTab() {
-  const [user, setUser] = React.useState<UserInfo | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
+  const { data: user, isLoading, error: loadError, refetch } = trpc.me.useQuery();
   const [nameInput, setNameInput] = React.useState("");
   const [passwordInput, setPasswordInput] = React.useState("");
-  const [registerNameInput, setRegisterNameInput] = React.useState("");
-  const [registerPasswordInput, setRegisterPasswordInput] = React.useState("");
+  const [regNameInput, setRegNameInput] = React.useState("");
+  const [regPasswordInput, setRegPasswordInput] = React.useState("");
   const [authMessage, setAuthMessage] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const loadMe = React.useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/me");
-      if (res.status === 401) {
-        setUser(null);
-        return;
-      }
-      if (!res.ok) {
-        throw new Error(`Failed to load current user: ${res.status}`);
-      }
-      const data = (await res.json()) as UserInfo;
-      setUser(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    void loadMe();
-  }, [loadMe]);
+  const registerMutation = trpc.register.useMutation();
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -50,159 +23,86 @@ export function UserTab() {
         body: JSON.stringify({ name: nameInput, password: passwordInput }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        const msg = body && typeof body.error === "string" ? body.error : `HTTP ${res.status}`;
-        throw new Error(msg);
+        if (res.status === 401) throw new Error("ユーザ名またはパスワードが違います");
+        throw new Error("ログインに失敗しました");
       }
       setAuthMessage("ログインしました");
       setPasswordInput("");
-      await loadMe();
-    } catch (e) {
-      setAuthMessage(null);
-      setError(e instanceof Error ? e.message : String(e));
+      await refetch();
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    setAuthMessage(null);
+    setError(null);
+    try {
+      await registerMutation.mutateAsync({ name: regNameInput, password: regPasswordInput });
+      setAuthMessage("ユーザ登録しました。ログインしてください。");
+      setRegNameInput("");
+      setRegPasswordInput("");
+    } catch (e: any) {
+      setError(e.message);
     }
   }
 
   async function handleLogout() {
-    setAuthMessage(null);
-    setError(null);
     try {
-      const res = await fetch("/api/logout", { method: "POST" });
-      if (!res.ok) {
-        throw new Error(`Failed to logout: ${res.status}`);
-      }
-      setUser(null);
+      await fetch("/api/logout", { method: "POST" });
       setAuthMessage("ログアウトしました");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      await refetch();
+    } catch (e: any) {
+      setError(e.message);
     }
   }
 
-  if (isLoading && !user) {
-    return <div>Loading user...</div>;
-  }
+  if (isLoading) return <div>Loading user...</div>;
 
   return (
     <div className="problem-view">
       <h2>ユーザ</h2>
-      {error && <div style={{ color: "#b00020" }}>Error: {error}</div>}
+      {(error || loadError) && <div style={{ color: "#b00020" }}>Error: {error || loadError?.message}</div>}
       {authMessage && <div className="submit-message">{authMessage}</div>}
 
       {user ? (
         <div style={{ marginTop: 16 }}>
-          <p>
-            ログイン中: <strong>{user.name}</strong>
-          </p>
+          <p>ログイン中: <strong>{user.name}</strong></p>
           <p>ロール: {user.isAdmin ? "管理者" : "一般ユーザ"}</p>
-          <p>
-            所属チーム:
-            {user.teams.length > 0 ? (
-              <ul style={{ listStyleType: "none", paddingLeft: 0 }}>
-                {user.teams.map((t) => (
-                  <li key={t.id}>
-                    コンテスト #{t.contestId}: #{t.id} ({t.color})
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <span> 未所属</span>
-            )}
-          </p>
-          <button type="button" onClick={handleLogout}>
-            ログアウト
-          </button>
+          <p>所属チーム: {user.teams.length > 0 ? (
+            <ul>
+              {user.teams.map((t) => (
+                <li key={t.id}>コンテスト #{t.contestId}: #{t.id} ({t.color})</li>
+              ))}
+            </ul>
+          ) : " 未所属"}</p>
+          <button onClick={handleLogout} style={{ marginTop: 16 }}>ログアウト</button>
         </div>
       ) : (
         <>
           <form className="submit-form" onSubmit={handleLogin} style={{ marginTop: 16 }}>
             <h3>ログイン</h3>
             <div className="form-row">
-              <label>
-                ユーザ名:
-                <input
-                  type="text"
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                />
-              </label>
+              <label>ユーザ名: <input type="text" value={nameInput} onChange={(e) => setNameInput(e.target.value)} /></label>
             </div>
             <div className="form-row">
-              <label>
-                パスワード:
-                <input
-                  type="password"
-                  value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                />
-              </label>
+              <label>パスワード: <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} /></label>
             </div>
-            <div className="form-row">
-              <button type="submit" disabled={!nameInput || !passwordInput}>
-                ログイン
-              </button>
-            </div>
+            <div className="form-row"><button type="submit" disabled={!nameInput || !passwordInput}>ログイン</button></div>
           </form>
 
-          <form
-            className="submit-form"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setAuthMessage(null);
-              setError(null);
-              try {
-                const res = await fetch("/api/register", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    name: registerNameInput,
-                    password: registerPasswordInput,
-                  }),
-                });
-                const body = await res.json().catch(() => null);
-                if (!res.ok) {
-                  const msg = body && typeof body.error === "string"
-                    ? body.error
-                    : `HTTP ${res.status}`;
-                  throw new Error(msg);
-                }
-
-                setAuthMessage("ユーザを登録し、ログインしました");
-                setRegisterPasswordInput("");
-                await loadMe();
-              } catch (e2) {
-                setAuthMessage(null);
-                setError(e2 instanceof Error ? e2.message : String(e2));
-              }
-            }}
-            style={{ marginTop: 32 }}
-          >
+          <form className="submit-form" onSubmit={handleRegister} style={{ marginTop: 32 }}>
             <h3>新規登録</h3>
             <div className="form-row">
-              <label>
-                ユーザ名:
-                <input
-                  type="text"
-                  value={registerNameInput}
-                  onChange={(e) => setRegisterNameInput(e.target.value)}
-                />
-              </label>
+              <label>ユーザ名: <input type="text" value={regNameInput} onChange={(e) => setRegNameInput(e.target.value)} /></label>
             </div>
             <div className="form-row">
-              <label>
-                パスワード:
-                <input
-                  type="password"
-                  value={registerPasswordInput}
-                  onChange={(e) => setRegisterPasswordInput(e.target.value)}
-                />
-              </label>
+              <label>パスワード: <input type="password" value={regPasswordInput} onChange={(e) => setRegPasswordInput(e.target.value)} /></label>
             </div>
             <div className="form-row">
-              <button
-                type="submit"
-                disabled={!registerNameInput || !registerPasswordInput}
-              >
-                新規登録
+              <button type="submit" disabled={!regNameInput || !regPasswordInput || registerMutation.isPending}>
+                {registerMutation.isPending ? "登録中..." : "登録"}
               </button>
             </div>
           </form>

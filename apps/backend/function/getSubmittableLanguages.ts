@@ -1,32 +1,16 @@
-import "dotenv/config";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client.js";
-import type { OwnerColor } from "./getBoard.js";
-
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL environment variable is not set");
-}
-
-const pool = new Pool({ connectionString: databaseUrl });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
 
 export type CellKey = string;
 
 type RawCellKind = "PLAYABLE" | "FIXED" | "FIX";
 
 type RawPlacement = {
-  // 汎用的なセル ID（あればこれを優先）
   id?: string;
-  // GRID など 2D レイアウト用の座標（なければ id のみで識別する）
   x?: number;
   y?: number;
   kind?: RawCellKind;
   languageId?: number;
-  color?: string; // FIXED の場合の所有色
+  color?: string;
 };
 
 type RawEdgesEndpoint = {
@@ -45,108 +29,67 @@ type RawEdgesJson = RawEdge[];
 type RawColorOfLanguages = Record<string, string>;
 
 function placementKey(p: RawPlacement): CellKey | null {
-  if (typeof p.id === "string" && p.id.length > 0) {
-    return p.id;
-  }
-  if (typeof p.x === "number" && typeof p.y === "number") {
-    return `${p.x},${p.y}`;
-  }
+  if (typeof p.id === "string" && p.id.length > 0) return p.id;
+  if (typeof p.x === "number" && typeof p.y === "number") return `${p.x},${p.y}`;
   return null;
 }
 
 function endpointKey(ep: RawEdgesEndpoint): CellKey | null {
-  if (typeof ep.id === "string" && ep.id.length > 0) {
-    return ep.id;
-  }
-  if (typeof ep.x === "number" && typeof ep.y === "number") {
-    return `${ep.x},${ep.y}`;
-  }
+  if (typeof ep.id === "string" && ep.id.length > 0) return ep.id;
+  if (typeof ep.x === "number" && typeof ep.y === "number") return `${ep.x},${ep.y}`;
   return null;
 }
 
 function buildIndexByKey(placements: RawPlacement[]): Map<CellKey, number> {
   const indexByKey = new Map<CellKey, number>();
-
   placements.forEach((p, index) => {
     const key = placementKey(p);
-    if (key !== null) {
-      indexByKey.set(key, index);
-    }
+    if (key !== null) indexByKey.set(key, index);
   });
-
   return indexByKey;
 }
 
-function buildAdjacency(
-  placements: RawPlacement[],
-  rawEdges: unknown,
-): Map<number, number[]> {
+function buildAdjacency(placements: RawPlacement[], rawEdges: unknown): Map<number, number[]> {
   const adjacency = new Map<number, number[]>();
   const indexByKey = buildIndexByKey(placements);
-
   const edges = (rawEdges ?? []) as RawEdgesJson;
-  if (!Array.isArray(edges)) {
-    return adjacency;
-  }
+  if (!Array.isArray(edges)) return adjacency;
 
   for (const edge of edges) {
     if (!edge || !edge.from || !edge.to) continue;
     const fromKey = endpointKey(edge.from);
     const toKey = endpointKey(edge.to);
     if (fromKey === null || toKey === null) continue;
-
     const fromIndex = indexByKey.get(fromKey);
     const toIndex = indexByKey.get(toKey);
-
     if (fromIndex === undefined || toIndex === undefined) continue;
-
-    // 無向グラフとして扱う
     if (!adjacency.has(fromIndex)) adjacency.set(fromIndex, []);
     if (!adjacency.has(toIndex)) adjacency.set(toIndex, []);
-
     adjacency.get(fromIndex)!.push(toIndex);
     adjacency.get(toIndex)!.push(fromIndex);
   }
-
   return adjacency;
 }
 
-function normalizeTeamColor(raw: string): OwnerColor {
-  const lower = raw.toLowerCase();
-  if (lower === "red" || lower === "blue") {
-    return lower;
-  }
-  return "neutral";
-}
-
-function normalizeOwnerColor(raw: string | undefined): OwnerColor {
+function normalizeOwnerColor(raw: string | undefined): "red" | "blue" | "neutral" {
   if (!raw) return "neutral";
   const lower = raw.toLowerCase();
   if (lower === "red" || lower === "blue") return lower;
   return "neutral";
 }
 
-/**
- * 指定した boardId と teamId について、そのチームが提出可能な languageId のリストを返す。
- *
- * 現在のルール:
- * - 自分の色が塗られた PLAYABLE セルに置かれた言語。
- * - そのセルに 1 本の edge で隣接する PLAYABLE セルに置かれた言語。
- * - FIXED セルは言語を持たないので提出対象にはならないが、所有色が自分色なら「隣接元」として扱われうる。
- */
 export async function getSubmittableLanguageIdsForTeam(
-  boardId: number,
+  prisma: PrismaClient,
   teamId: number,
+  contestId: number,
 ): Promise<number[]> {
   const team = await prisma.team.findUnique({ where: { id: teamId } });
-  if (!team) {
-    throw new Error(`Team ${teamId} not found`);
-  }
+  if (!team) throw new Error(`Team ${teamId} not found`);
 
-  const teamColor = normalizeTeamColor(team.color);
+  const teamColor = normalizeOwnerColor(team.color);
 
-  const boardRow = await prisma.board.findUnique({
-    where: { id: boardId },
+  const boardRow = await prisma.board.findFirst({
+    where: { contestId },
     select: {
       dispositionOfLanguages: true,
       colorOfLanguages: true,
@@ -154,64 +97,44 @@ export async function getSubmittableLanguageIdsForTeam(
     },
   });
 
-  if (!boardRow) {
-    throw new Error(`Board ${boardId} not found`);
-  }
+  if (!boardRow) return [];
 
   const placements = (boardRow.dispositionOfLanguages ?? []) as unknown as RawPlacement[];
   const colorConfig = (boardRow.colorOfLanguages ?? {}) as unknown as RawColorOfLanguages;
 
-  if (!Array.isArray(placements)) {
-    throw new Error("Board.dispositionOfLanguages JSON is not an array");
-  }
+  if (!Array.isArray(placements)) return [];
 
-  // 各セルの所有色を計算する
-  const owners: OwnerColor[] = placements.map((p) => {
+  const owners: ("red" | "blue" | "neutral")[] = placements.map((p) => {
     const kind: RawCellKind = p.kind ?? "PLAYABLE";
-    if (kind === "FIXED") {
-      return normalizeOwnerColor(p.color);
-    }
-
+    if (kind === "FIXED") return normalizeOwnerColor(p.color);
     if (typeof p.languageId === "number") {
       const raw = colorConfig[String(p.languageId)];
       return normalizeOwnerColor(raw);
     }
-
     return "neutral";
   });
 
-  // 自分の色のセル index
   const ownedIndices: number[] = [];
   owners.forEach((owner, index) => {
-    if (owner === teamColor) {
-      ownedIndices.push(index);
-    }
+    if (owner === teamColor) ownedIndices.push(index);
   });
 
   const adjacency = buildAdjacency(placements, boardRow.edges);
 
-  // 自分色セル + そこから 1 本の edge で繋がるセルを候補にする
   const candidateIndices = new Set<number>();
   for (const idx of ownedIndices) {
     candidateIndices.add(idx);
     const neighbors = adjacency.get(idx) ?? [];
-    for (const n of neighbors) {
-      candidateIndices.add(n);
-    }
+    for (const n of neighbors) candidateIndices.add(n);
   }
 
   const submittableLanguageIds = new Set<number>();
-
   candidateIndices.forEach((index) => {
     const placement = placements[index];
     if (!placement) return;
-
     const kind: RawCellKind = placement.kind ?? "PLAYABLE";
     if (kind !== "PLAYABLE") return;
-
-    if (typeof placement.languageId === "number") {
-      submittableLanguageIds.add(placement.languageId);
-    }
+    if (typeof placement.languageId === "number") submittableLanguageIds.add(placement.languageId);
   });
 
   return Array.from(submittableLanguageIds.values()).sort((a, b) => a - b);

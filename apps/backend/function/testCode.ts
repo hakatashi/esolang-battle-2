@@ -1,28 +1,15 @@
-import "dotenv/config";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../generated/prisma/client.js";
+import type { PrismaClient } from "../generated/prisma/client.js";
 import { runCode } from "./runCode.js";
-
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL environment variable is not set");
-}
-
-const pool = new Pool({ connectionString: databaseUrl });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
 
 export type TestCodeParams = {
   languageId: number;
   code: string;
 };
 
-export async function testCode({ languageId, code }: TestCodeParams) {
+export async function testCode(prisma: PrismaClient, { languageId, code }: TestCodeParams) {
   const language = await prisma.language.findUnique({ where: { id: languageId } });
 
   if (!language) {

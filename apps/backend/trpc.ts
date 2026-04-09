@@ -1,6 +1,6 @@
 import { initTRPC, TRPCError } from '@trpc/server';
-import { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
-import { UserInfo } from '@esolang-battle/common';
+import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
+import type { UserInfo } from '@esolang-battle/common';
 import { PrismaClient } from './generated/prisma/client.js';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';

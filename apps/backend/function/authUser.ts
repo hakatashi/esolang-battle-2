@@ -1,21 +1,8 @@
-import "dotenv/config";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../generated/prisma/client.js";
 import type { UserInfo } from "@esolang-battle/common";
 import bcrypt from "bcryptjs";
+import type { PrismaClient } from "../generated/prisma/client.js";
 
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL environment variable is not set");
-}
-
-const pool = new Pool({ connectionString: databaseUrl });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
-
-export async function verifyUserLogin(name: string, password: string): Promise<UserInfo | null> {
+export async function verifyUserLogin(prisma: PrismaClient, name: string, password: string): Promise<UserInfo | null> {
   const user = await prisma.user.findFirst({
     where: { name },
     include: { teams: true },
@@ -35,7 +22,7 @@ export async function verifyUserLogin(name: string, password: string): Promise<U
   };
 }
 
-export async function registerUser(name: string, password: string): Promise<UserInfo> {
+export async function registerUser(prisma: PrismaClient, name: string, password: string): Promise<UserInfo> {
   const existing = await prisma.user.findFirst({ where: { name } });
   if (existing) {
     throw new Error("ユーザ名は既に使われています");
@@ -61,7 +48,7 @@ export async function registerUser(name: string, password: string): Promise<User
   };
 }
 
-export async function getUserInfo(userId: number): Promise<UserInfo | null> {
+export async function getUserInfo(prisma: PrismaClient, userId: number): Promise<UserInfo | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: { teams: true },

@@ -1,122 +1,66 @@
 import React from "react";
-import type { UserInfo, TeamInfo } from "@esolang-battle/common";
-
-type ProblemRow = {
-  id: number;
-  contestId: number;
-  title: string;
-  problemStatement: string;
-};
+import { trpc } from "../utils/trpc";
 
 export function AdminUsersTab() {
-  const [users, setUsers] = React.useState<UserInfo[] | null>(null);
-  const [teams, setTeams] = React.useState<TeamInfo[] | null>(null);
-  const [problems, setProblems] = React.useState<ProblemRow[] | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [isSaving, setIsSaving] = React.useState(false);
+  const { data: users, isLoading: isLoadingUsers, error: usersError, refetch: refetchUsers } = trpc.getUsers.useQuery();
+  const { data: teams, isLoading: isLoadingTeams, error: teamsError } = trpc.getTeams.useQuery();
+  const { data: problems, isLoading: isLoadingProblems, error: problemsError, refetch: refetchProblems } = trpc.getProblems.useQuery();
+
+  const updateUserTeamMutation = trpc.updateUserTeam.useMutation();
+  const upsertProblemMutation = trpc.upsertProblem.useMutation();
+
   const [problemForm, setProblemForm] = React.useState<{
     id: number | null;
     contestId: string;
     title: string;
     problemStatement: string;
   }>({ id: null, contestId: "", title: "", problemStatement: "" });
-  const [isSavingProblem, setIsSavingProblem] = React.useState(false);
 
-  React.useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    setError(null);
+  const [error, setError] = React.useState<string | null>(null);
 
-    (async () => {
-      try {
-        const [usersRes, teamsRes, problemsRes] = await Promise.all([
-          fetch("/api/admin/users"),
-          fetch("/api/teams"),
-          fetch("/api/admin/problems"),
-        ]);
-
-        if (usersRes.status === 401) {
-          throw new Error("ログインが必要です");
-        }
-        if (usersRes.status === 403) {
-          throw new Error("管理者のみユーザ一覧を参照できます");
-        }
-        if (!usersRes.ok) {
-          throw new Error(`Failed to load users: ${usersRes.status}`);
-        }
-        if (!teamsRes.ok) {
-          throw new Error(`Failed to load teams: ${teamsRes.status}`);
-        }
-        if (!problemsRes.ok) {
-          throw new Error(`Failed to load problems: ${problemsRes.status}`);
-        }
-
-        const usersBody = (await usersRes.json()) as { users: UserInfo[] };
-        const teamsBody = (await teamsRes.json()) as { teams: TeamInfo[] };
-        const problemsBody = (await problemsRes.json()) as { problems: ProblemRow[] };
-
-        if (!cancelled) {
-          setUsers(usersBody.users);
-          setTeams(teamsBody.teams);
-          setProblems(problemsBody.problems);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : String(e));
-          setUsers(null);
-          setTeams(null);
-          setProblems(null);
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  async function updateUserTeam(userId: number, teamId: number | null) {
-    setIsSaving(true);
+  async function handleUpdateUserTeam(userId: number, teamId: number | null) {
     setError(null);
     try {
-      const res = await fetch(`/api/admin/users/${userId}/team`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamId }),
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        const msg = body && typeof body.error === "string" ? body.error : `HTTP ${res.status}`;
-        throw new Error(msg);
-      }
-      const updated = body as UserInfo;
-      setUsers((prev) =>
-        prev
-          ? prev.map((u) => (u.id === updated.id ? { ...u, teams: updated.teams } : u))
-          : prev,
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setIsSaving(false);
+      await updateUserTeamMutation.mutateAsync({ userId, teamId });
+      await refetchUsers();
+    } catch (e: any) {
+      setError(e.message);
     }
   }
 
-  if (isLoading) {
-    return <div>Loading users...</div>;
+  async function handleUpsertProblem(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      const contestIdNum = Number(problemForm.contestId);
+      if (!Number.isFinite(contestIdNum) || contestIdNum <= 0) {
+        throw new Error("contestId must be a positive number");
+      }
+      await upsertProblemMutation.mutateAsync({
+        id: problemForm.id,
+        contestId: contestIdNum,
+        title: problemForm.title,
+        problemStatement: problemForm.problemStatement,
+      });
+      setProblemForm({ id: null, contestId: "", title: "", problemStatement: "" });
+      await refetchProblems();
+    } catch (e: any) {
+      setError(e.message);
+    }
   }
 
-  if (error) {
-    return <div style={{ color: "#b00020" }}>Error: {error}</div>;
-  }
+  const isLoading = isLoadingUsers || isLoadingTeams || isLoadingProblems;
+  const globalError = usersError || teamsError || problemsError || error;
+
+  if (isLoading) return <div>Loading admin data...</div>;
 
   return (
     <div className="problem-view">
       <h2>ユーザ / チーム管理</h2>
-      {isSaving && <div>保存中...</div>}
+      {globalError && <div style={{ color: "#b00020" }}>Error: {typeof globalError === 'string' ? globalError : globalError.message}</div>}
+      
+      {updateUserTeamMutation.isPending && <div>保存中...</div>}
+
       {users && users.length > 0 ? (
         <table className="submissions-table" style={{ marginTop: 12 }}>
           <thead>
@@ -147,7 +91,7 @@ export function AdminUsersTab() {
                           const val = e.target.value;
                           if (val === "") return;
                           const nextTeamId = val === "CLEAR_ALL" ? null : Number(val);
-                          void updateUserTeam(u.id, nextTeamId);
+                          void handleUpdateUserTeam(u.id, nextTeamId);
                         }}
                         style={{ marginTop: 4 }}
                       >
@@ -173,68 +117,9 @@ export function AdminUsersTab() {
       <hr style={{ margin: "24px 0" }} />
 
       <h2>問題管理</h2>
-      {isSavingProblem && <div>問題を保存中...</div>}
+      {upsertProblemMutation.isPending && <div>問題を保存中...</div>}
 
-      <form
-        className="submit-form"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setError(null);
-          setIsSavingProblem(true);
-          try {
-            const contestIdNum = Number(problemForm.contestId);
-            if (!Number.isFinite(contestIdNum) || contestIdNum <= 0) {
-              throw new Error("contestId must be a positive number");
-            }
-            const payload = {
-              contestId: contestIdNum,
-              title: problemForm.title,
-              problemStatement: problemForm.problemStatement,
-            };
-
-            if (problemForm.id === null) {
-              const res = await fetch("/api/admin/problems", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-              });
-              const body = await res.json().catch(() => null);
-              if (!res.ok) {
-                const msg = body && typeof body.error === "string"
-                  ? body.error
-                  : `HTTP ${res.status}`;
-                throw new Error(msg);
-              }
-              const { problem } = body as { problem: ProblemRow };
-              setProblems((prev) => (prev ? [...prev, problem] : [problem]));
-            } else {
-              const res = await fetch(`/api/admin/problems/${problemForm.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-              });
-              const body = await res.json().catch(() => null);
-              if (!res.ok) {
-                const msg = body && typeof body.error === "string"
-                  ? body.error
-                  : `HTTP ${res.status}`;
-                throw new Error(msg);
-              }
-              const { problem } = body as { problem: ProblemRow };
-              setProblems((prev) =>
-                prev ? prev.map((p) => (p.id === problem.id ? problem : p)) : [problem],
-              );
-            }
-
-            setProblemForm({ id: null, contestId: "", title: "", problemStatement: "" });
-          } catch (e2) {
-            setError(e2 instanceof Error ? e2.message : String(e2));
-          } finally {
-            setIsSavingProblem(false);
-          }
-        }}
-        style={{ marginTop: 12 }}
-      >
+      <form className="submit-form" onSubmit={handleUpsertProblem} style={{ marginTop: 12 }}>
         <div className="form-row">
           <label>
             Contest ID:
@@ -242,9 +127,7 @@ export function AdminUsersTab() {
               type="number"
               min={1}
               value={problemForm.contestId}
-              onChange={(e) =>
-                setProblemForm((f) => ({ ...f, contestId: e.target.value }))
-              }
+              onChange={(e) => setProblemForm((f) => ({ ...f, contestId: e.target.value }))}
             />
           </label>
         </div>
@@ -254,9 +137,7 @@ export function AdminUsersTab() {
             <input
               type="text"
               value={problemForm.title}
-              onChange={(e) =>
-                setProblemForm((f) => ({ ...f, title: e.target.value }))
-              }
+              onChange={(e) => setProblemForm((f) => ({ ...f, title: e.target.value }))}
             />
           </label>
         </div>
@@ -266,9 +147,7 @@ export function AdminUsersTab() {
             <textarea
               rows={6}
               value={problemForm.problemStatement}
-              onChange={(e) =>
-                setProblemForm((f) => ({ ...f, problemStatement: e.target.value }))
-              }
+              onChange={(e) => setProblemForm((f) => ({ ...f, problemStatement: e.target.value }))}
             />
           </label>
         </div>
@@ -277,8 +156,9 @@ export function AdminUsersTab() {
             type="submit"
             disabled={
               !problemForm.contestId ||
-              !problemForm.title.trim() ||
-              !problemForm.problemStatement.trim()
+              !(problemForm.title || "").trim() ||
+              !(problemForm.problemStatement || "").trim() ||
+              upsertProblemMutation.isPending
             }
           >
             {problemForm.id === null ? "新規追加" : "更新"}
@@ -313,7 +193,7 @@ export function AdminUsersTab() {
                 <td>{p.id}</td>
                 <td>{p.contestId}</td>
                 <td>{p.title}</td>
-                <td>{p.problemStatement.slice(0, 40)}{p.problemStatement.length > 40 ? "..." : ""}</td>
+                <td>{p.problemStatement ? (p.problemStatement.slice(0, 40) + (p.problemStatement.length > 40 ? "..." : "")) : ""}</td>
                 <td>
                   <button
                     type="button"
@@ -321,8 +201,8 @@ export function AdminUsersTab() {
                       setProblemForm({
                         id: p.id,
                         contestId: String(p.contestId),
-                        title: p.title,
-                        problemStatement: p.problemStatement,
+                        title: p.title ?? "",
+                        problemStatement: p.problemStatement ?? "",
                       })
                     }
                   >
