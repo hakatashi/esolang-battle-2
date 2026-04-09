@@ -1,17 +1,5 @@
 import React from "react";
-
-type UserRow = {
-  id: number;
-  name: string;
-  isAdmin: boolean;
-  teams: { id: number; color: string; contestId: number }[];
-};
-
-type TeamRow = {
-  id: number;
-  color: string;
-  contestId: number;
-};
+import type { UserInfo, TeamInfo } from "@esolang-battle/common";
 
 type ProblemRow = {
   id: number;
@@ -21,8 +9,8 @@ type ProblemRow = {
 };
 
 export function AdminUsersTab() {
-  const [users, setUsers] = React.useState<UserRow[] | null>(null);
-  const [teams, setTeams] = React.useState<TeamRow[] | null>(null);
+  const [users, setUsers] = React.useState<UserInfo[] | null>(null);
+  const [teams, setTeams] = React.useState<TeamInfo[] | null>(null);
   const [problems, setProblems] = React.useState<ProblemRow[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -64,8 +52,8 @@ export function AdminUsersTab() {
           throw new Error(`Failed to load problems: ${problemsRes.status}`);
         }
 
-        const usersBody = (await usersRes.json()) as { users: UserRow[] };
-        const teamsBody = (await teamsRes.json()) as { teams: TeamRow[] };
+        const usersBody = (await usersRes.json()) as { users: UserInfo[] };
+        const teamsBody = (await teamsRes.json()) as { teams: TeamInfo[] };
         const problemsBody = (await problemsRes.json()) as { problems: ProblemRow[] };
 
         if (!cancelled) {
@@ -104,7 +92,7 @@ export function AdminUsersTab() {
         const msg = body && typeof body.error === "string" ? body.error : `HTTP ${res.status}`;
         throw new Error(msg);
       }
-      const updated = body as UserRow;
+      const updated = body as UserInfo;
       setUsers((prev) =>
         prev
           ? prev.map((u) => (u.id === updated.id ? { ...u, teams: updated.teams } : u))

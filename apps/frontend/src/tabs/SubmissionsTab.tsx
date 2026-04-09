@@ -1,14 +1,5 @@
 import React from "react";
-
-type SubmissionSummary = {
-  id: number;
-  codeLength: number;
-  score: number;
-  submittedAt: string;
-  user: { id: number; name: string; teams: { id: number; color: string; contestId: number }[] };
-  language: { id: number; name: string; description: string };
-  problem: { id: number; title: string };
-};
+import type { SubmissionSummary, UserInfo as MeInfo } from "@esolang-battle/common";
 
 type ExecutionDto = {
   testcaseId: number;
@@ -34,13 +25,6 @@ type SubmissionDetail = {
   language: { id: number; name: string; description: string };
   problem: { id: number; title: string };
   executions: ExecutionDto[];
-};
-
-type MeInfo = {
-  id: number;
-  name: string;
-  isAdmin: boolean;
-  teams: { id: number; color: string; contestId: number }[];
 };
 
 type Scope = "self" | "team" | "all";

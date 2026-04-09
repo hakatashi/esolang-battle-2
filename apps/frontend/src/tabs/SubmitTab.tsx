@@ -1,15 +1,5 @@
 import React from "react";
-
-type LanguageSummary = {
-  id: number;
-  name: string;
-  description: string;
-};
-
-type ProblemSummary = {
-  id: number;
-  title: string;
-};
+import type { LanguageSummary, ProblemSummary } from "@esolang-battle/common";
 
 export function SubmitTab(props: { contestId: number }) {
   const [languages, setLanguages] = React.useState<LanguageSummary[] | null>(null);

@@ -1,11 +1,6 @@
 import React from "react";
 
-type UserInfo = {
-  id: number;
-  name: string;
-  isAdmin: boolean;
-  teams: { id: number; color: string, contestId: number }[];
-};
+import type { UserInfo } from "@esolang-battle/common";
 
 export function UserTab() {
   const [user, setUser] = React.useState<UserInfo | null>(null);

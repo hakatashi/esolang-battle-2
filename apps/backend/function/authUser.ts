@@ -2,6 +2,7 @@ import "dotenv/config";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client.js";
+import type { UserInfo } from "@esolang-battle/common";
 import bcrypt from "bcryptjs";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -13,13 +14,6 @@ if (!databaseUrl) {
 const pool = new Pool({ connectionString: databaseUrl });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
-
-export type UserInfo = {
-  id: number;
-  name: string;
-  isAdmin: boolean;
-  teams: { id: number; color: string, contestId: number }[];
-};
 
 export async function verifyUserLogin(name: string, password: string): Promise<UserInfo | null> {
   const user = await prisma.user.findFirst({

@@ -1,5 +1,5 @@
 {
-  "name": "esolang-battle-2-frontend",
+  "name": "@esolang-battle/frontend",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -9,6 +9,7 @@
     "lint": "echo 'no lint setup yet'"
   },
   "dependencies": {
+    "@esolang-battle/common": "^1.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

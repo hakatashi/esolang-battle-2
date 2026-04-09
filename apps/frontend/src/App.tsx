@@ -6,13 +6,7 @@ import { SubmissionsTab } from "./tabs/SubmissionsTab";
 import { CodeTestTab } from "./tabs/CodeTestTab";
 import { UserTab } from "./tabs/UserTab";
 import { AdminUsersTab } from "./tabs/AdminUsersTab";
-
-type MeInfo = {
-  id: number;
-  name: string;
-  isAdmin: boolean;
-  teams: { id: number; color: string; contestId: number }[];
-};
+import type { UserInfo } from "@esolang-battle/common";
 
 type ContestTabId = "board" | "problem" | "submit" | "submissions" | "codeTest";
 
@@ -77,7 +71,7 @@ function routeToPath(route: Route): string {
 
 export default function App() {
   const [route, setRoute] = React.useState<Route>(() => parseRoute(window.location.pathname));
-  const [me, setMe] = React.useState<MeInfo | null>(null);
+  const [me, setMe] = React.useState<UserInfo | null>(null);
   const [isLoadingMe, setIsLoadingMe] = React.useState(false);
 
   React.useEffect(() => {
@@ -106,7 +100,7 @@ export default function App() {
         } else if (!res.ok) {
           if (!cancelled) setMe(null);
         } else {
-          const data = (await res.json()) as MeInfo;
+          const data = (await res.json()) as UserInfo;
           if (!cancelled) setMe(data);
         }
       } catch {
