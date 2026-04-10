@@ -39,7 +39,6 @@ model Team {
 model Contest {
   id         Int                 @id @default(autoincrement())
   name       String
-  viewerType ContestViewerType
   startAt    DateTime
   endAt      DateTime
 
@@ -50,21 +49,14 @@ model Contest {
 
 /// Scoreboard state for a contest
 model Board {
-  id                        Int     @id @default(autoincrement())
-  contest                   Contest @relation(fields: [contestId], references: [id])
-  contestId                 Int     @unique
+  id                        Int      @id @default(autoincrement())
+  contest                   Contest  @relation(fields: [contestId], references: [id])
+  contestId                 Int      @unique
+  type                      String   // "GRID", "HONEYCOMB", "CROSS_GRID"
+  config                    Json     // Static data: e.g. { width, height, cellMapping }
+  state                     Json     // Dynamic data: Record<cellId, BoardCell>
   lastProcessedSubmissionId Int?
-
-  /// e.g. list of languages shown on the board
-  languages              Json
-  // where languages are placed on the board (e.g. column index)
-  dispositionOfLanguages Json
-  /// color configuration per language
-  colorOfLanguages       Json
-  /// score configuration / current scores per language
-  scoreOfLanguages       Json
-  /// board edges / graph structure
-  edges                  Json
+  lastUpdated               DateTime @default(now())
 }
 
 /// Programming language used for submissions
@@ -155,10 +147,5 @@ enum ExecutionStatus {
   TLE
   RE
   WJ
-}
-
-enum ContestViewerType {
-  GRID
-  HONEYCOMB
 }
 

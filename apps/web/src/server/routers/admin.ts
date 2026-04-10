@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import {
   listProblemsSchema,
   updateUserTeamSchema,
@@ -8,6 +9,7 @@ import {
   findAllTeams,
   findAllUsersWithTeams,
   findUserByIdWithTeams,
+  recalculateBoard,
   updateUserTeam,
   upsertProblem,
 } from '@esolang-battle/db';
@@ -46,4 +48,9 @@ export const adminRouter = router({
 
     return await updateUserTeam(ctx.prisma, userId, teamId);
   }),
+  recalculateBoard: adminProcedure
+    .input(z.object({ boardId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      return await recalculateBoard(ctx.prisma, input.boardId);
+    }),
 });

@@ -10,7 +10,6 @@ export const contestRouter = router({
     return contests.map((c) => ({
       id: c.id,
       name: c.name,
-      viewerType: c.viewerType,
       startAt: c.startAt.toISOString(),
       endAt: c.endAt.toISOString(),
     }));

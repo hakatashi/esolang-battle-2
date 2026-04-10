@@ -1,4 +1,4 @@
-import { prisma } from '@esolang-battle/db';
+import { prisma, updateBoardFromSubmission } from '@esolang-battle/db';
 
 import { runAllTestCasesInSingleContainer } from '../lib/docker';
 
@@ -7,7 +7,7 @@ export async function processSubmission(submissionId: number) {
     where: { id: submissionId },
     include: {
       language: true,
-      problem: { include: { testCases: true } },
+      problem: { include: { testCases: true, contest: true } },
     },
   });
 
@@ -64,6 +64,18 @@ export async function processSubmission(submissionId: number) {
       where: { id: submission.id },
       data: { score: submission.codeLength },
     });
+
+    // 盤面更新
+    const board = await prisma.board.findUnique({
+      where: { contestId: submission.problem.contestId },
+    });
+    if (board) {
+      try {
+        await updateBoardFromSubmission(prisma, board.id, submission.id);
+      } catch (error) {
+        console.error('Failed to update board:', error);
+      }
+    }
   } else {
     await prisma.submission.update({
       where: { id: submission.id },

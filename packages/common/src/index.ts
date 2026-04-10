@@ -85,16 +85,4 @@ export type ProblemSummary = {
   title: string;
 }
 
-export type SubmissionSummary = {
-  id: number;
-  codeLength: number;
-  score: number;
-  submittedAt: string;
-  user: {
-    id: number;
-    name: string;
-    teams: TeamInfo[];
-  };
-  language: LanguageSummary;
-  problem: ProblemSummary;
-}
+export * from './board';

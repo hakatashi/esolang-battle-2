@@ -48,4 +48,4 @@ export * from './services/team';
 export * from './services/user';
 export * from './services/problem';
 export * from './services/submission';
-export * from './services/board';
+export * from './services/board/index';

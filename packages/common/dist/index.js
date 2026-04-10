@@ -16,13 +16,15 @@ export const submissionIdSchema = z.object({
 export const listProblemsSchema = z.object({
     contestId: z.number().optional(),
 });
-export const submissionFilterSchema = z.object({
+export const submissionFilterSchema = z
+    .object({
     userId: z.number().optional(),
     teamId: z.number().optional(),
     problemId: z.number().optional(),
     languageId: z.number().optional(),
     contestId: z.number().optional(),
-}).optional();
+})
+    .optional();
 export const testCodeSchema = z.object({
     code: z.string(),
     languageId: z.number(),
@@ -46,3 +48,4 @@ export const updateUserTeamSchema = z.object({
     userId: z.number(),
     teamId: z.number().nullable(),
 });
+export * from './board';
