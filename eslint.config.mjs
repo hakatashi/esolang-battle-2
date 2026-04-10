@@ -54,7 +54,7 @@ export default tseslint.config(
         },
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
+      '@typescript-eslint/consistent-type-definitions': 'off',
       'no-console': ['warn', { allow: ['warn', 'error', 'info'] }],
       'no-control-regex': 'off',
     },

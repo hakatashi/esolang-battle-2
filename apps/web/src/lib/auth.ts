@@ -1,15 +1,29 @@
-import { DefaultSession, NextAuthOptions } from 'next-auth';
+import { DefaultSession, NextAuthOptions, User as NextAuthUser } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
+import { TeamInfo } from '@esolang-battle/common';
 import { prisma, verifyUserLogin } from '@esolang-battle/db';
 
 declare module 'next-auth' {
-  type Session = {
+  interface Session {
     user: {
       id: number;
       isAdmin: boolean;
-      teams: any[];
+      teams: TeamInfo[];
     } & DefaultSession['user'];
+  }
+
+  interface User {
+    isAdmin: boolean;
+    teams: TeamInfo[];
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    id: number;
+    isAdmin: boolean;
+    teams: TeamInfo[];
   }
 }
 
@@ -44,17 +58,17 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.isAdmin = (user as any).isAdmin;
-        token.teams = (user as any).teams;
+        token.id = Number(user.id);
+        token.isAdmin = user.isAdmin;
+        token.teams = user.teams;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as number;
-        session.user.isAdmin = token.isAdmin as boolean;
-        session.user.teams = (token.teams as any[]) || [];
+        session.user.id = token.id;
+        session.user.isAdmin = token.isAdmin;
+        session.user.teams = token.teams || [];
       }
       return session;
     },
