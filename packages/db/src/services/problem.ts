@@ -1,9 +1,9 @@
-import { PrismaClient } from "../../prisma/generated/client/index";
+import { PrismaClient } from '../../prisma/generated/client/index';
 
 export async function findAllProblems(prisma: PrismaClient, contestId?: number) {
   return await prisma.problem.findMany({
     where: contestId ? { contestId } : {},
-    orderBy: { id: "asc" },
+    orderBy: { id: 'asc' },
   });
 }
 
@@ -17,7 +17,7 @@ export async function findProblemById(prisma: PrismaClient, id: number) {
 }
 
 export async function upsertProblem(
-  prisma: PrismaClient, 
+  prisma: PrismaClient,
   data: { id: number | null; contestId: number; title: string; problemStatement: string }
 ) {
   const { id, ...payload } = data;

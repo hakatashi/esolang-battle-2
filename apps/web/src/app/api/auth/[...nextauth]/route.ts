@@ -1,18 +1,19 @@
-import NextAuth from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { prisma, verifyUserLogin } from "@esolang-battle/db";
+import NextAuth from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+
+import { prisma, verifyUserLogin } from '@esolang-battle/db';
 
 const handler = NextAuth({
   providers: [
     CredentialsProvider({
-      name: "Credentials",
+      name: 'Credentials',
       credentials: {
-        name: { label: "Username", type: "text" },
-        password: { label: "Password", type: "password" }
+        name: { label: 'Username', type: 'text' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
         if (!credentials?.name || !credentials?.password) return null;
-        
+
         try {
           const user = await verifyUserLogin(prisma, credentials.name, credentials.password);
           if (user) {
@@ -24,11 +25,11 @@ const handler = NextAuth({
             };
           }
         } catch (error) {
-          console.error("Auth error:", error);
+          console.error('Auth error:', error);
         }
         return null;
-      }
-    })
+      },
+    }),
   ],
   callbacks: {
     async jwt({ token, user }) {
@@ -46,10 +47,10 @@ const handler = NextAuth({
         (session.user as any).teams = token.teams;
       }
       return session;
-    }
+    },
   },
   pages: {
-    signIn: "/login",
+    signIn: '/login',
   },
   secret: process.env.NEXTAUTH_SECRET,
 });

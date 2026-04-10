@@ -1,4 +1,4 @@
-import { PrismaClient } from "../../prisma/generated/client/index";
+import { PrismaClient } from '../../prisma/generated/client/index';
 
 export async function findBoardByContestId(prisma: PrismaClient, contestId: number) {
   return await prisma.board.findUnique({
@@ -16,7 +16,7 @@ export async function findLanguagesWithLatestSubmissions(prisma: PrismaClient, c
           score: { not: null },
         },
         orderBy: {
-          submittedAt: "desc",
+          submittedAt: 'desc',
         },
         take: 1,
         include: {
@@ -33,11 +33,15 @@ export async function findLanguagesWithLatestSubmissions(prisma: PrismaClient, c
   });
 }
 
-export async function updateBoardData(prisma: PrismaClient, contestId: number, data: {
-  scoreOfLanguages: any;
-  colorOfLanguages: any;
-  lastProcessedSubmissionId: number | null;
-}) {
+export async function updateBoardData(
+  prisma: PrismaClient,
+  contestId: number,
+  data: {
+    scoreOfLanguages: any;
+    colorOfLanguages: any;
+    lastProcessedSubmissionId: number | null;
+  }
+) {
   return await prisma.board.update({
     where: { contestId },
     data,

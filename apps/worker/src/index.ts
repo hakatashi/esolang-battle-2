@@ -1,13 +1,14 @@
-import "dotenv/config";
-import { Worker, Job } from 'bullmq';
+import { Job, Worker } from 'bullmq';
+import 'dotenv/config';
 import Redis from 'ioredis';
+
 import { processSubmission } from './jobs/submission';
-import { processTest, TestJobData } from './jobs/test';
+import { TestJobData, processTest } from './jobs/test';
 
 // --- Types ---
 type SubmissionJobData = {
   submissionId: number;
-};
+}
 
 // --- Infrastructure ---
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
@@ -15,17 +16,25 @@ const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
 
 // --- Workers ---
 
-const submissionWorker = new Worker<SubmissionJobData>('submission', async (job: Job<SubmissionJobData>) => {
-  console.log(`Processing submission ${job.data.submissionId}`);
-  await processSubmission(job.data.submissionId);
-}, { connection });
+const submissionWorker = new Worker<SubmissionJobData>(
+  'submission',
+  async (job: Job<SubmissionJobData>) => {
+    console.log(`Processing submission ${job.data.submissionId}`);
+    await processSubmission(job.data.submissionId);
+  },
+  { connection }
+);
 
-const testWorker = new Worker<TestJobData>('test', async (job: Job<TestJobData>) => {
-  console.log(`Processing test code for language ${job.data.languageId}`);
-  if (job.name === 'runTest') {
-    return await processTest(job.data);
-  }
-}, { connection });
+const testWorker = new Worker<TestJobData>(
+  'test',
+  async (job: Job<TestJobData>) => {
+    console.log(`Processing test code for language ${job.data.languageId}`);
+    if (job.name === 'runTest') {
+      return await processTest(job.data);
+    }
+  },
+  { connection }
+);
 
 // --- Events ---
 

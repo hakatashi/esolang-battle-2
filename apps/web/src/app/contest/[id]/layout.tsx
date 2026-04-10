@@ -1,14 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
+
 import NavBar from '@/components/NavBar';
 
-export default function ContestLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function ContestLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const params = useParams();
   const contestId = params.id;
@@ -23,18 +20,18 @@ export default function ContestLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center mb-6">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-6 flex items-center">
           <Link
             href="/contests"
-            className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+            className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
           >
             <span>&lt;</span> コンテスト一覧
           </Link>
           <NavBar />
         </div>
 
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-hidden rounded-lg bg-white shadow">
           <div className="flex border-b border-gray-200">
             {tabs.map((tab) => {
               const isActive = pathname === tab.path;
@@ -42,10 +39,10 @@ export default function ContestLayout({
                 <Link
                   key={tab.id}
                   href={tab.path}
-                  className={`flex-1 text-center py-4 text-sm font-medium transition-colors ${
+                  className={`flex-1 py-4 text-center text-sm font-medium transition-colors ${
                     isActive
                       ? 'border-b-2 border-blue-600 text-blue-600'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
                   }`}
                 >
                   {tab.label}
@@ -53,9 +50,7 @@ export default function ContestLayout({
               );
             })}
           </div>
-          <div className="p-6">
-            {children}
-          </div>
+          <div className="p-6">{children}</div>
         </div>
       </div>
     </div>

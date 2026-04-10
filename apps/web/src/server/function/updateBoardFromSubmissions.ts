@@ -1,12 +1,16 @@
-import { PrismaClient, findBoardByContestId, updateBoardData } from "@esolang-battle/db";
-import type { OwnerColor } from "./getBoard";
+import { PrismaClient, findBoardByContestId, updateBoardData } from '@esolang-battle/db';
+
+import type { OwnerColor } from './getBoard';
 
 /**
  * Board.lastProcessedSubmissionId より新しい Submission を反映して
  * Board.scoreOfLanguages / Board.colorOfLanguages / Board.lastProcessedSubmissionId
  * を更新するユーティリティ関数。
  */
-export async function updateBoardFromSubmissions(prisma: PrismaClient, contestId: number): Promise<void> {
+export async function updateBoardFromSubmissions(
+  prisma: PrismaClient,
+  contestId: number
+): Promise<void> {
   const board = await findBoardByContestId(prisma, contestId);
 
   if (!board) {
@@ -23,10 +27,7 @@ export async function updateBoardFromSubmissions(prisma: PrismaClient, contestId
     include: {
       user: { include: { teams: true } },
     },
-    orderBy: [
-      { submittedAt: "asc" },
-      { id: "asc" },
-    ],
+    orderBy: [{ submittedAt: 'asc' }, { id: 'asc' }],
   });
 
   if (newSubmissions.length === 0) {
@@ -47,13 +48,13 @@ export async function updateBoardFromSubmissions(prisma: PrismaClient, contestId
     const currentScore = scoreOfLanguages[key] ?? Infinity;
     const newScore = submission.score;
 
-    if (typeof newScore === "number" && newScore < currentScore) {
+    if (typeof newScore === 'number' && newScore < currentScore) {
       scoreOfLanguages[key] = newScore;
 
       const team = submission.user.teams.find((t: any) => t.contestId === contestId);
-      const rawColor = team?.color?.toLowerCase() ?? "neutral";
+      const rawColor = team?.color?.toLowerCase() ?? 'neutral';
       const teamColor: OwnerColor =
-        rawColor === "red" || rawColor === "blue" ? (rawColor as OwnerColor) : "neutral";
+        rawColor === 'red' || rawColor === 'blue' ? (rawColor as OwnerColor) : 'neutral';
       colorOfLanguages[key] = teamColor;
     }
 
@@ -72,7 +73,10 @@ export async function updateBoardFromSubmissions(prisma: PrismaClient, contestId
 /**
  * 盤面を Submission からフル再計算するユーティリティ関数。
  */
-export async function recomputeBoardFromSubmissions(prisma: PrismaClient, contestId: number): Promise<void> {
+export async function recomputeBoardFromSubmissions(
+  prisma: PrismaClient,
+  contestId: number
+): Promise<void> {
   const board = await findBoardByContestId(prisma, contestId);
 
   if (!board) {
@@ -86,10 +90,7 @@ export async function recomputeBoardFromSubmissions(prisma: PrismaClient, contes
     include: {
       user: { include: { teams: true } },
     },
-    orderBy: [
-      { submittedAt: "asc" },
-      { id: "asc" },
-    ],
+    orderBy: [{ submittedAt: 'asc' }, { id: 'asc' }],
   });
 
   if (submissions.length === 0) {
@@ -113,13 +114,13 @@ export async function recomputeBoardFromSubmissions(prisma: PrismaClient, contes
     const currentScore = scoreOfLanguages[key] ?? Infinity;
     const newScore = submission.score;
 
-    if (typeof newScore === "number" && newScore < currentScore) {
+    if (typeof newScore === 'number' && newScore < currentScore) {
       scoreOfLanguages[key] = newScore;
 
       const team = submission.user.teams.find((t: any) => t.contestId === contestId);
-      const rawColor = team?.color?.toLowerCase() ?? "neutral";
+      const rawColor = team?.color?.toLowerCase() ?? 'neutral';
       const teamColor: OwnerColor =
-        rawColor === "red" || rawColor === "blue" ? (rawColor as OwnerColor) : "neutral";
+        rawColor === 'red' || rawColor === 'blue' ? (rawColor as OwnerColor) : 'neutral';
       colorOfLanguages[key] = teamColor;
     }
 

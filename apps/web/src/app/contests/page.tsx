@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+
 import NavBar from '@/components/NavBar';
 import { trpc } from '@/utils/trpc';
 
@@ -9,23 +10,23 @@ export default function ContestsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center mb-8 border-b pb-4 border-gray-200">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-8 flex items-center border-b border-gray-200 pb-4">
           <h1 className="text-2xl font-bold text-gray-900">コンテスト一覧</h1>
           <NavBar />
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="py-12 text-center">
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
             <p className="mt-4 text-gray-600">Loading contests...</p>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-8">
+          <div className="mb-8 border-l-4 border-red-400 bg-red-50 p-4">
             <p className="text-red-700">Error: {error.message}</p>
           </div>
         ) : !contests || contests.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
+          <div className="rounded-lg bg-white py-12 text-center shadow">
             <p className="text-gray-500">コンテストがありません。</p>
           </div>
         ) : (
@@ -34,9 +35,9 @@ export default function ContestsPage() {
               <Link
                 key={c.id}
                 href={`/contest/${c.id}/board`}
-                className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+                className="block rounded-lg bg-white p-6 shadow transition-shadow hover:shadow-md"
               >
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">{c.name}</h2>
+                <h2 className="mb-2 text-xl font-semibold text-gray-900">{c.name}</h2>
                 <p className="text-sm text-gray-500">ID: {c.id}</p>
               </Link>
             ))}

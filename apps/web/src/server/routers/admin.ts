@@ -1,17 +1,18 @@
 import {
   listProblemsSchema,
+  updateUserTeamSchema,
   upsertProblemSchema,
-  updateUserTeamSchema
 } from '@esolang-battle/common';
-import { 
-  findAllUsersWithTeams, 
-  findAllTeams, 
-  findAllProblems, 
-  upsertProblem,
+import {
+  findAllProblems,
+  findAllTeams,
+  findAllUsersWithTeams,
+  findUserByIdWithTeams,
   updateUserTeam,
-  findUserByIdWithTeams
+  upsertProblem,
 } from '@esolang-battle/db';
-import { router, adminProcedure } from '../trpc';
+
+import { adminProcedure, router } from '../trpc';
 
 export const adminRouter = router({
   getUsers: adminProcedure.query(async ({ ctx }) => {
@@ -26,29 +27,23 @@ export const adminRouter = router({
   getTeams: adminProcedure.query(async ({ ctx }) => {
     return await findAllTeams(ctx.prisma);
   }),
-  getProblems: adminProcedure
-    .input(listProblemsSchema.optional())
-    .query(async ({ ctx, input }) => {
-      const problems = await findAllProblems(ctx.prisma, input?.contestId);
-      return problems.map((p) => ({
-        id: p.id,
-        contestId: p.contestId,
-        title: p.title,
-        problemStatement: p.problemStatement,
-      }));
-    }),
-  upsertProblem: adminProcedure
-    .input(upsertProblemSchema)
-    .mutation(async ({ ctx, input }) => {
-      return await upsertProblem(ctx.prisma, input);
-    }),
-  updateUserTeam: adminProcedure
-    .input(updateUserTeamSchema)
-    .mutation(async ({ ctx, input }) => {
-      const { userId, teamId } = input;
-      const user = await findUserByIdWithTeams(ctx.prisma, userId);
-      if (!user) throw new Error("User not found");
+  getProblems: adminProcedure.input(listProblemsSchema.optional()).query(async ({ ctx, input }) => {
+    const problems = await findAllProblems(ctx.prisma, input?.contestId);
+    return problems.map((p) => ({
+      id: p.id,
+      contestId: p.contestId,
+      title: p.title,
+      problemStatement: p.problemStatement,
+    }));
+  }),
+  upsertProblem: adminProcedure.input(upsertProblemSchema).mutation(async ({ ctx, input }) => {
+    return await upsertProblem(ctx.prisma, input);
+  }),
+  updateUserTeam: adminProcedure.input(updateUserTeamSchema).mutation(async ({ ctx, input }) => {
+    const { userId, teamId } = input;
+    const user = await findUserByIdWithTeams(ctx.prisma, userId);
+    if (!user) throw new Error('User not found');
 
-      return await updateUserTeam(ctx.prisma, userId, teamId);
-    }),
+    return await updateUserTeam(ctx.prisma, userId, teamId);
+  }),
 });

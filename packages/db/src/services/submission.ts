@@ -1,4 +1,4 @@
-import { PrismaClient } from "../../prisma/generated/client/index";
+import { PrismaClient } from '../../prisma/generated/client/index';
 
 export type GetSubmissionsFilter = {
   userId?: number;
@@ -6,7 +6,7 @@ export type GetSubmissionsFilter = {
   problemId?: number;
   languageId?: number;
   contestId?: number;
-};
+}
 
 export async function findSubmissions(prisma: PrismaClient, filter: GetSubmissionsFilter = {}) {
   const where: any = {};
@@ -24,7 +24,7 @@ export async function findSubmissions(prisma: PrismaClient, filter: GetSubmissio
 
   return await prisma.submission.findMany({
     where,
-    orderBy: { submittedAt: "desc" },
+    orderBy: { submittedAt: 'desc' },
     include: {
       user: {
         include: {
@@ -48,19 +48,22 @@ export async function findSubmissionDetail(prisma: PrismaClient, id: number) {
           testcase: true,
         },
         orderBy: {
-          testcaseId: "asc",
+          testcaseId: 'asc',
         },
       },
     },
   });
 }
 
-export async function createSubmission(prisma: PrismaClient, data: {
-  code: string;
-  languageId: number;
-  userId: number;
-  problemId: number;
-}) {
+export async function createSubmission(
+  prisma: PrismaClient,
+  data: {
+    code: string;
+    languageId: number;
+    userId: number;
+    problemId: number;
+  }
+) {
   return await prisma.submission.create({
     data: {
       code: data.code,

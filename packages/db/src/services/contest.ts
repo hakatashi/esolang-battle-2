@@ -1,8 +1,8 @@
-import { PrismaClient } from "../../prisma/generated/client/index";
+import { PrismaClient } from '../../prisma/generated/client/index';
 
 export async function findAllContests(prisma: PrismaClient) {
   return await prisma.contest.findMany({
-    orderBy: { id: "asc" },
+    orderBy: { id: 'asc' },
   });
 }
 

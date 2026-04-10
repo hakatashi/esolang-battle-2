@@ -23,13 +23,15 @@ export const listProblemsSchema = z.object({
   contestId: z.number().optional(),
 });
 
-export const submissionFilterSchema = z.object({
-  userId: z.number().optional(),
-  teamId: z.number().optional(),
-  problemId: z.number().optional(),
-  languageId: z.number().optional(),
-  contestId: z.number().optional(),
-}).optional();
+export const submissionFilterSchema = z
+  .object({
+    userId: z.number().optional(),
+    teamId: z.number().optional(),
+    problemId: z.number().optional(),
+    languageId: z.number().optional(),
+    contestId: z.number().optional(),
+  })
+  .optional();
 
 export const testCodeSchema = z.object({
   code: z.string(),
@@ -63,25 +65,25 @@ export type TeamInfo = {
   id: number;
   color: string;
   contestId: number;
-};
+}
 
 export type UserInfo = {
   id: number;
   name: string;
   isAdmin: boolean;
   teams: TeamInfo[];
-};
+}
 
 export type LanguageSummary = {
   id: number;
   name: string;
   description: string;
-};
+}
 
 export type ProblemSummary = {
   id: number;
   title: string;
-};
+}
 
 export type SubmissionSummary = {
   id: number;
@@ -95,4 +97,4 @@ export type SubmissionSummary = {
   };
   language: LanguageSummary;
   problem: ProblemSummary;
-};
+}

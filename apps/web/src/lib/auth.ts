@@ -1,28 +1,29 @@
-import { NextAuthOptions, DefaultSession } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { prisma, verifyUserLogin } from "@esolang-battle/db";
+import { DefaultSession, NextAuthOptions } from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
 
-declare module "next-auth" {
-  interface Session {
+import { prisma, verifyUserLogin } from '@esolang-battle/db';
+
+declare module 'next-auth' {
+  type Session = {
     user: {
       id: number;
       isAdmin: boolean;
       teams: any[];
-    } & DefaultSession["user"]
+    } & DefaultSession['user'];
   }
 }
 
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
-      name: "Credentials",
+      name: 'Credentials',
       credentials: {
-        name: { label: "Username", type: "text" },
-        password: { label: "Password", type: "password" }
+        name: { label: 'Username', type: 'text' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
         if (!credentials?.name || !credentials?.password) return null;
-        
+
         try {
           const user = await verifyUserLogin(prisma, credentials.name, credentials.password);
           if (user) {
@@ -34,11 +35,11 @@ export const authOptions: NextAuthOptions = {
             };
           }
         } catch (error) {
-          console.error("Auth error:", error);
+          console.error('Auth error:', error);
         }
         return null;
-      }
-    })
+      },
+    }),
   ],
   callbacks: {
     async jwt({ token, user }) {
@@ -56,13 +57,13 @@ export const authOptions: NextAuthOptions = {
         session.user.teams = (token.teams as any[]) || [];
       }
       return session;
-    }
+    },
   },
   pages: {
-    signIn: "/user",
+    signIn: '/user',
   },
   session: {
-    strategy: "jwt",
+    strategy: 'jwt',
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

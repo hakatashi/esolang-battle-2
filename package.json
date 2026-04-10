@@ -6,23 +6,38 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:backend": "npm run dev -w apps/backend",
     "dev:web": "npm run dev -w apps/web",
     "dev:worker": "npm run dev -w apps/worker",
-    "dev:frontend": "npm run dev -w apps/frontend",
     "build": "npm run build --workspaces",
-    "generate": "npm run generate -w apps/backend"
+    "generate": "npm run generate -w packages/db",
+    "format": "prettier --write .",
+    "check-format": "prettier --check .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "type": "module",
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@next/eslint-plugin-next": "^15.5.15",
+    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "globals": "^15.15.0",
+    "prettier": "3.8.2",
+    "prettier-plugin-tailwindcss": "0.7.2",
+    "prisma": "^7.7.0",
     "typescript": "^6.0.2",
-    "prisma": "^7.7.0"
+    "typescript-eslint": "^8.58.1"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@prisma/client": "^7.7.0",
     "@prisma/adapter-pg": "^7.7.0",
-    "pg": "^8.20.0"
+    "@prisma/client": "^7.7.0",
+    "pg": "^8.20.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }

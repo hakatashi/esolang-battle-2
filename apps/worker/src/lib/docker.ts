@@ -21,17 +21,19 @@ export type TestCaseWithIO = {
  * 単一のコンテナでコードを実行する
  */
 export async function runCode(image: string, code: string): Promise<DockerResult> {
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "esolang-test-"));
-  const cmd = image.split("/").slice(-1)[0];
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'esolang-test-'));
+  const imageSegments = image.split('/');
+  const cmd = imageSegments[imageSegments.length - 1];
+  if (!cmd) throw new Error(`Invalid image name: ${image}`);
 
   try {
-    const codeFileName = "code.bf";
+    const codeFileName = 'code.bf';
     const codePath = path.join(tmpDir, codeFileName);
-    await fs.writeFile(codePath, code, "utf8");
+    await fs.writeFile(codePath, code, 'utf8');
 
     const container = await docker.createContainer({
       Image: image,
-      Cmd: [cmd!, `/volume/${codeFileName}`],
+      Cmd: [cmd, `/volume/${codeFileName}`],
       HostConfig: {
         Binds: [`${tmpDir}:/volume:ro`],
       },
@@ -44,13 +46,13 @@ export async function runCode(image: string, code: string): Promise<DockerResult
 
     const logBuffer = await container.logs({ stdout: true, stderr: true });
     // Docker ログ形式 (8バイトヘッダ) を考慮した簡易的な文字列化
-    const output = logBuffer.toString('utf8').replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+    const output = logBuffer.toString('utf8').replace(/[\x00-\x1F\x7F-\x9F]/g, '');
 
     await container.remove({ force: true });
 
     return {
       stdout: output,
-      stderr: "",
+      stderr: '',
       exitCode: waitResult.StatusCode ?? -1,
       durationMs: end - start,
     };
@@ -65,33 +67,35 @@ export async function runCode(image: string, code: string): Promise<DockerResult
 export async function runAllTestCasesInSingleContainer(
   image: string,
   code: string,
-  testCases: TestCaseWithIO[],
+  testCases: TestCaseWithIO[]
 ): Promise<Record<number, DockerResult>> {
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "esolang-worker-"));
-  const cmd = image.split("/").slice(-1)[0];
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'esolang-worker-'));
+  const imageSegments = image.split('/');
+  const cmd = imageSegments[imageSegments.length - 1];
+  if (!cmd) throw new Error(`Invalid image name: ${image}`);
 
   try {
-    const codeFileName = "code.bf";
+    const codeFileName = 'code.bf';
     const codePath = path.join(tmpDir, codeFileName);
-    await fs.writeFile(codePath, code, "utf8");
+    await fs.writeFile(codePath, code, 'utf8');
 
     const scriptLines: string[] = [];
     for (const tc of testCases) {
       const base = String(tc.id);
       const inputPath = path.join(tmpDir, `INPUT_${base}`);
-      await fs.writeFile(inputPath, tc.input, "utf8");
+      await fs.writeFile(inputPath, tc.input, 'utf8');
 
       scriptLines.push(
-        `${cmd} /volume/${codeFileName} < /volume/INPUT_${base} > /volume/OUTPUT_${base} 2>/volume/ERR_${base}; echo $? > /volume/EXIT_${base}`,
+        `${cmd} /volume/${codeFileName} < /volume/INPUT_${base} > /volume/OUTPUT_${base} 2>/volume/ERR_${base}; echo $? > /volume/EXIT_${base}`
       );
     }
 
-    const scriptPath = path.join(tmpDir, "run_all.sh");
-    await fs.writeFile(scriptPath, scriptLines.join("\n"), { mode: 0o755 });
+    const scriptPath = path.join(tmpDir, 'run_all.sh');
+    await fs.writeFile(scriptPath, scriptLines.join('\n'), { mode: 0o755 });
 
     const container = await docker.createContainer({
       Image: image,
-      Cmd: ["sh", "/volume/run_all.sh"],
+      Cmd: ['sh', '/volume/run_all.sh'],
       HostConfig: {
         Binds: [`${tmpDir}:/volume:rw`],
       },
@@ -113,12 +117,12 @@ export async function runAllTestCasesInSingleContainer(
       const [stdoutBuf, stderrBuf, exitText] = await Promise.all([
         fs.readFile(outPath).catch(() => Buffer.alloc(0)),
         fs.readFile(errPath).catch(() => Buffer.alloc(0)),
-        fs.readFile(exitPath, "utf8").catch(() => "-1"),
+        fs.readFile(exitText, 'utf8').catch(() => '-1'),
       ]);
 
       const exitCode = parseInt(String(exitText).trim(), 10);
       results[tc.id] = {
-        stdout: stdoutBuf.toString("utf8"),
+        stdout: stdoutBuf.toString('utf8'),
         stderr: stderrBuf.toString("utf8"),
         exitCode: Number.isNaN(exitCode) ? -1 : exitCode,
         durationMs: end - start,

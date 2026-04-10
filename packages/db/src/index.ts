@@ -1,7 +1,8 @@
-import "dotenv/config";
-import { PrismaClient, Prisma } from '../prisma/generated/client/index';
-import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
+import 'dotenv/config';
+import { Pool } from 'pg';
+
+import { Prisma, PrismaClient } from '../prisma/generated/client/index';
 
 export { PrismaClient, Prisma };
 
@@ -16,10 +17,10 @@ function createPrismaClient() {
     // 開発環境で DATABASE_URL がない場合は、
     // ビルド時などのためにダミーのアダプターかエラーを投げる
     if (process.env.NODE_ENV === 'production') {
-      throw new Error("DATABASE_URL environment variable is not set");
+      throw new Error('DATABASE_URL environment variable is not set');
     }
     // ビルド時などの回避策としてダミーURLを使用（実際のクエリ実行時にはエラーになる）
-    const dummyUrl = "postgresql://postgres:postgres@localhost:5432/dummy";
+    const dummyUrl = 'postgresql://postgres:postgres@localhost:5432/dummy';
     const pool = new Pool({ connectionString: dummyUrl });
     const adapter = new PrismaPg(pool);
     return new PrismaClient({

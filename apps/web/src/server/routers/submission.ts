@@ -1,26 +1,25 @@
 import {
   submissionFilterSchema,
-  testCodeSchema,
-  submittableLanguageSchema,
+  submissionIdSchema,
   submitCodeSchema,
-  submissionIdSchema
+  submittableLanguageSchema,
+  testCodeSchema,
 } from '@esolang-battle/common';
-import { 
-  findSubmissions, 
-  findSubmissionDetail, 
-  createSubmission, 
-  findAllLanguages 
+import {
+  createSubmission,
+  findAllLanguages,
+  findSubmissionDetail,
+  findSubmissions,
 } from '@esolang-battle/db';
-import { router, publicProcedure, protectedProcedure } from '../trpc';
+
 import { getSubmittableLanguageIdsForTeam } from '../function/getSubmittableLanguages';
 import { submissionQueue, testQueue, testQueueEvents } from '../queue';
+import { protectedProcedure, publicProcedure, router } from '../trpc';
 
 export const submissionRouter = router({
-  getSubmissions: publicProcedure
-    .input(submissionFilterSchema)
-    .query(async ({ ctx, input }) => {
-      return await findSubmissions(ctx.prisma, input ?? {});
-    }),
+  getSubmissions: publicProcedure.input(submissionFilterSchema).query(async ({ ctx, input }) => {
+    return await findSubmissions(ctx.prisma, input ?? {});
+  }),
   getLanguages: publicProcedure.query(async ({ ctx }) => {
     return await findAllLanguages(ctx.prisma);
   }),
@@ -62,26 +61,21 @@ export const submissionRouter = router({
         })),
       };
     }),
-  testCode: publicProcedure
-    .input(testCodeSchema)
-    .mutation(async ({ input }) => {
-      const job = await testQueue.add('runTest', input);
-      return await job.waitUntilFinished(testQueueEvents);
-    }),
+  testCode: publicProcedure.input(testCodeSchema).mutation(async ({ input }) => {
+    const job = await testQueue.add('runTest', input);
+    return await job.waitUntilFinished(testQueueEvents);
+  }),
   getSubmittableLanguageIdsForTeam: protectedProcedure
     .input(submittableLanguageSchema)
     .query(async ({ ctx, input }) => {
       return await getSubmittableLanguageIdsForTeam(ctx.prisma, input.teamId, input.contestId);
     }),
-  submitCode: protectedProcedure
-    .input(submitCodeSchema)
-    .mutation(async ({ ctx, input }) => {
-      const submission = await createSubmission(ctx.prisma, {
-        ...input,
-        userId: Number(ctx.user.id),
-      });
-      await submissionQueue.add('evaluate', { submissionId: submission.id });
-      return submission;
-    }),
+  submitCode: protectedProcedure.input(submitCodeSchema).mutation(async ({ ctx, input }) => {
+    const submission = await createSubmission(ctx.prisma, {
+      ...input,
+      userId: Number(ctx.user.id),
+    });
+    await submissionQueue.add('evaluate', { submissionId: submission.id });
+    return submission;
+  }),
 });
-

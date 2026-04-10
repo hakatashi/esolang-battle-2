@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+
 import { trpc } from '@/utils/trpc';
 
 export default function NavBar() {
@@ -11,10 +12,10 @@ export default function NavBar() {
   const isAdmin = me?.isAdmin;
 
   return (
-    <div className="flex gap-2 ml-auto">
+    <div className="ml-auto flex gap-2">
       <Link
         href="/user"
-        className={`px-4 py-2 rounded ${
+        className={`rounded px-4 py-2 ${
           pathname === '/user' ? 'bg-blue-600 text-white' : 'bg-gray-200'
         }`}
       >
@@ -23,7 +24,7 @@ export default function NavBar() {
       {isAdmin && (
         <Link
           href="/admin/users"
-          className={`px-4 py-2 rounded ${
+          className={`rounded px-4 py-2 ${
             pathname === '/admin/users' ? 'bg-blue-600 text-white' : 'bg-gray-200'
           }`}
         >

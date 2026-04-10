@@ -1,8 +1,8 @@
-import { PrismaClient } from "../../prisma/generated/client/index";
+import { PrismaClient } from '../../prisma/generated/client/index';
 
 export async function findAllUsersWithTeams(prisma: PrismaClient) {
   return await prisma.user.findMany({
-    orderBy: { id: "asc" },
+    orderBy: { id: 'asc' },
     include: { teams: true },
   });
 }

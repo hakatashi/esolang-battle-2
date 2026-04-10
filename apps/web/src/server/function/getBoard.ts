@@ -1,6 +1,6 @@
-import { PrismaClient, findBoardByContestId, findAllLanguages } from "@esolang-battle/db";
+import { PrismaClient, findAllLanguages, findBoardByContestId } from '@esolang-battle/db';
 
-export type OwnerColor = "red" | "blue" | "neutral";
+export type OwnerColor = 'red' | 'blue' | 'neutral';
 
 export type BoardCellDto = {
   x: number;
@@ -10,17 +10,16 @@ export type BoardCellDto = {
   owner: OwnerColor;
   score: number | null;
   canSubmit: boolean;
-};
+}
 
-export type BoardDto =
-  | {
-      viewerType: "GRID";
-      width: number;
-      height: number;
-      cells: BoardCellDto[];
-    };
+export type BoardDto = {
+  viewerType: 'GRID';
+  width: number;
+  height: number;
+  cells: BoardCellDto[];
+}
 
-type RawCellKind = "PLAYABLE" | "FIXED";
+type RawCellKind = 'PLAYABLE' | 'FIXED';
 
 type RawLanguagePlacement = {
   x: number;
@@ -28,7 +27,7 @@ type RawLanguagePlacement = {
   kind?: RawCellKind; // 省略時は PLAYABLE とみなす
   languageId?: number; // kind=PLAYABLE のときだけ有効
   color?: OwnerColor; // kind=PERMA のときだけ有効
-};
+}
 
 type RawColorOfLanguages = Record<string, OwnerColor>;
 type RawScoresOfLanguages = Record<string, number>;
@@ -49,7 +48,7 @@ export async function getBoard(prisma: PrismaClient, contestId: number): Promise
   const rawScores = (board.scoreOfLanguages ?? {}) as unknown as RawScoresOfLanguages;
 
   if (!Array.isArray(rawPlacements)) {
-    throw new Error("Board.dispositionOfLanguages JSON is not an array");
+    throw new Error('Board.dispositionOfLanguages JSON is not an array');
   }
 
   const languages = await findAllLanguages(prisma);
@@ -61,7 +60,7 @@ export async function getBoard(prisma: PrismaClient, contestId: number): Promise
   let maxX = 0;
   let maxY = 0;
   for (const p of rawPlacements) {
-    if (typeof p.x === "number" && typeof p.y === "number") {
+    if (typeof p.x === 'number' && typeof p.y === 'number') {
       if (p.x > maxX) maxX = p.x;
       if (p.y > maxY) maxY = p.y;
     }
@@ -85,30 +84,30 @@ export async function getBoard(prisma: PrismaClient, contestId: number): Promise
 
       let languageId: number | null = null;
       let languageName: string | null = null;
-      let owner: OwnerColor = "neutral";
+      let owner: OwnerColor = 'neutral';
       let score: number | null = null;
 
       if (placement) {
-        const kind: RawCellKind = placement.kind ?? "PLAYABLE";
+        const kind: RawCellKind = placement.kind ?? 'PLAYABLE';
 
-        if (kind === "FIXED") {
+        if (kind === 'FIXED') {
           const rawOwner = placement.color;
-          if (rawOwner === "red" || rawOwner === "blue" || rawOwner === "neutral") {
+          if (rawOwner === 'red' || rawOwner === 'blue' || rawOwner === 'neutral') {
             owner = rawOwner;
           }
         } else {
-          if (typeof placement.languageId === "number") {
+          if (typeof placement.languageId === 'number') {
             languageId = placement.languageId;
             const lang = languageById.get(languageId);
             languageName = lang ? lang.name : null;
 
             const rawOwner = rawColors[String(languageId)];
-            if (rawOwner === "red" || rawOwner === "blue" || rawOwner === "neutral") {
+            if (rawOwner === 'red' || rawOwner === 'blue' || rawOwner === 'neutral') {
               owner = rawOwner;
             }
 
             const rawScore = rawScores[String(languageId)];
-            if (typeof rawScore === "number") {
+            if (typeof rawScore === 'number') {
               score = rawScore;
             }
           }
@@ -128,7 +127,7 @@ export async function getBoard(prisma: PrismaClient, contestId: number): Promise
   }
 
   return {
-    viewerType: "GRID",
+    viewerType: 'GRID',
     width,
     height,
     cells,

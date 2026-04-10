@@ -1,8 +1,14 @@
-import type { UserInfo } from "@esolang-battle/common";
-import bcrypt from "bcryptjs";
-import { PrismaClient } from "../prisma/generated/client/index";
+import bcrypt from 'bcryptjs';
 
-export async function verifyUserLogin(prisma: PrismaClient, name: string, password: string): Promise<UserInfo | null> {
+import type { UserInfo } from '@esolang-battle/common';
+
+import { PrismaClient } from '../prisma/generated/client/index';
+
+export async function verifyUserLogin(
+  prisma: PrismaClient,
+  name: string,
+  password: string
+): Promise<UserInfo | null> {
   const user = await prisma.user.findFirst({
     where: { name },
     include: { teams: true },
@@ -21,10 +27,14 @@ export async function verifyUserLogin(prisma: PrismaClient, name: string, passwo
   };
 }
 
-export async function registerUser(prisma: PrismaClient, name: string, password: string): Promise<UserInfo> {
+export async function registerUser(
+  prisma: PrismaClient,
+  name: string,
+  password: string
+): Promise<UserInfo> {
   const existing = await prisma.user.findFirst({ where: { name } });
   if (existing) {
-    throw new Error("ユーザ名は既に使われています");
+    throw new Error('ユーザ名は既に使われています');
   }
 
   const hashed = await bcrypt.hash(password, 10);
