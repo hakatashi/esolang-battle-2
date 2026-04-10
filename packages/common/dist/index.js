@@ -10,6 +10,9 @@ export const contestIdSchema = z.object({
 export const problemIdSchema = z.object({
     problemId: z.number(),
 });
+export const submissionIdSchema = z.object({
+    submissionId: z.number(),
+});
 export const listProblemsSchema = z.object({
     contestId: z.number().optional(),
 });

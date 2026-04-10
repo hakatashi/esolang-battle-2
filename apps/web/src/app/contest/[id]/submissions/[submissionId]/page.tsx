@@ -61,7 +61,7 @@ export default function SubmissionDetailPage() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">実行結果 (テストケース)</h3>
         <div className="space-y-4">
-          {submission.executions.map((exec, idx) => (
+          {submission.executions.map((exec: any, idx: number) => (
             <div key={idx} className="bg-white border rounded-lg overflow-hidden shadow-sm">
               <div className="bg-gray-50 px-4 py-2 flex items-center justify-between border-b text-sm">
                 <div className="font-medium text-gray-700">

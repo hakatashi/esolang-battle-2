@@ -1,9 +1,9 @@
 import "dotenv/config";
-import { PrismaClient } from '../prisma/generated/client/index';
+import { PrismaClient, Prisma } from '../prisma/generated/client/index';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 
-export * from '../prisma/generated/client/index';
+export { PrismaClient, Prisma };
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;

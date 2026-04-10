@@ -13,6 +13,9 @@ export declare const contestIdSchema: z.ZodObject<{
 export declare const problemIdSchema: z.ZodObject<{
     problemId: z.ZodNumber;
 }, z.core.$strip>;
+export declare const submissionIdSchema: z.ZodObject<{
+    submissionId: z.ZodNumber;
+}, z.core.$strip>;
 export declare const listProblemsSchema: z.ZodObject<{
     contestId: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>;

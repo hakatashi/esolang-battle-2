@@ -17,8 +17,8 @@ export default function SubmissionsPage() {
   const myTeam = me?.teams.find(t => t.contestId === contestId);
 
   const filter: any = { contestId };
-  if (scope === "self") filter.userId = me?.id;
-  if (scope === "team") filter.teamId = myTeam?.id;
+  if (scope === "self" && me?.id) filter.userId = Number(me.id);
+  if (scope === "team" && myTeam?.id) filter.teamId = Number(myTeam.id);
 
   const { data: submissions, isLoading, error } = trpc.getSubmissions.useQuery(
     filter,
