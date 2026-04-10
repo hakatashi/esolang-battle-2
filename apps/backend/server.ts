@@ -1,12 +1,13 @@
 import "dotenv/config";
 import fastify from 'fastify';
-import fastifyPassport from '@fastify/passport';
 import fastifySecureSession from '@fastify/secure-session';
 import fastifyFormbody from '@fastify/formbody';
 import { Strategy as LocalStrategy } from 'passport-local';
+import { Authenticator } from '@fastify/passport';
+const fastifyPassport = new Authenticator();
 import { fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import { router, publicProcedure, createContext, prisma, protectedProcedure, adminProcedure } from './trpc.js';
-import { verifyUserLogin, getUserInfo, registerUser } from './function/authUser.js';
+import { verifyUserLogin, getUserInfo, registerUser } from '@esolang-battle/db';
 import { z } from 'zod';
 import type { UserInfo } from '@esolang-battle/common';
 
@@ -55,7 +56,7 @@ fastifyPassport.registerUserSerializer(async (user: UserInfo) => user.id);
 fastifyPassport.registerUserDeserializer(async (id: number) => await getUserInfo(prisma, id));
 
 server.post('/api/login', {
-  preValidation: fastifyPassport.authenticate('local'),
+  preValidation: fastifyPassport.authenticate('local') as any,
 }, async (req, res) => req.user as UserInfo);
 
 server.post('/api/logout', async (req, res) => {
