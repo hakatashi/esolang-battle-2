@@ -1,4 +1,4 @@
-import { PrismaClient } from "@esolang-battle/db";
+import { PrismaClient, findBoardByContestId } from "@esolang-battle/db";
 
 export type CellKey = string;
 
@@ -88,19 +88,11 @@ export async function getSubmittableLanguageIdsForTeam(
 
   const teamColor = normalizeOwnerColor(team.color);
 
-  const boardRow = await prisma.board.findFirst({
-    where: { contestId },
-    select: {
-      dispositionOfLanguages: true,
-      colorOfLanguages: true,
-      edges: true,
-    },
-  });
+  const board = await findBoardByContestId(prisma, contestId);
+  if (!board) return [];
 
-  if (!boardRow) return [];
-
-  const placements = (boardRow.dispositionOfLanguages ?? []) as unknown as RawPlacement[];
-  const colorConfig = (boardRow.colorOfLanguages ?? {}) as unknown as RawColorOfLanguages;
+  const placements = (board.dispositionOfLanguages ?? []) as unknown as RawPlacement[];
+  const colorConfig = (board.colorOfLanguages ?? {}) as unknown as RawColorOfLanguages;
 
   if (!Array.isArray(placements)) return [];
 
@@ -119,7 +111,7 @@ export async function getSubmittableLanguageIdsForTeam(
     if (owner === teamColor) ownedIndices.push(index);
   });
 
-  const adjacency = buildAdjacency(placements, boardRow.edges);
+  const adjacency = buildAdjacency(placements, board.edges);
 
   const candidateIndices = new Set<number>();
   for (const idx of ownedIndices) {

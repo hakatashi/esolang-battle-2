@@ -41,3 +41,10 @@ export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 export * from './auth';
+export * from './services/contest';
+export * from './services/language';
+export * from './services/team';
+export * from './services/user';
+export * from './services/problem';
+export * from './services/submission';
+export * from './services/board';

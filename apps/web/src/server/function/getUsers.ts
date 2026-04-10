@@ -1,11 +1,8 @@
-import { PrismaClient } from "@esolang-battle/db";
+import { PrismaClient, findAllUsersWithTeams } from "@esolang-battle/db";
 import type { UserInfo } from "@esolang-battle/common";
 
 export async function getUsersWithTeams(prisma: PrismaClient): Promise<UserInfo[]> {
-  const users = await prisma.user.findMany({
-    orderBy: { id: "asc" },
-    include: { teams: true },
-  });
+  const users = await findAllUsersWithTeams(prisma);
 
   return users.map((u) => ({
     id: u.id,

@@ -1,4 +1,4 @@
-import { PrismaClient } from "@esolang-battle/db";
+import { PrismaClient, findAllProblems } from "@esolang-battle/db";
 
 export type ProblemSummary = {
   id: number;
@@ -8,16 +8,7 @@ export type ProblemSummary = {
 };
 
 export async function listProblems(prisma: PrismaClient, contestId?: number): Promise<ProblemSummary[]> {
-  const problems = await prisma.problem.findMany({
-    where: contestId ? { contestId } : {},
-    orderBy: { id: "asc" },
-    select: {
-      id: true,
-      contestId: true,
-      title: true,
-      problemStatement: true,
-    },
-  });
+  const problems = await findAllProblems(prisma, contestId);
 
   return problems.map((p) => ({
     id: p.id,

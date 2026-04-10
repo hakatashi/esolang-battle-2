@@ -1,4 +1,4 @@
-import { PrismaClient } from "@esolang-battle/db";
+import { PrismaClient, findSubmissionDetail } from "@esolang-battle/db";
 
 export async function getSubmissionDetail(
   prisma: PrismaClient,
@@ -6,21 +6,7 @@ export async function getSubmissionDetail(
   userId: number,
   isAdmin: boolean,
 ) {
-  const submission = await prisma.submission.findUnique({
-    where: { id: submissionId },
-    include: {
-      language: true,
-      problem: true,
-      executions: {
-        include: {
-          testcase: true,
-        },
-        orderBy: {
-          testcaseId: "asc",
-        },
-      },
-    },
-  });
+  const submission = await findSubmissionDetail(prisma, submissionId);
 
   if (!submission) {
     return null;

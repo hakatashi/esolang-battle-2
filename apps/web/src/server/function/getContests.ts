@@ -1,4 +1,4 @@
-import { PrismaClient } from "@esolang-battle/db";
+import { PrismaClient, findAllContests } from "@esolang-battle/db";
 
 export type ContestSummary = {
   id: number;
@@ -9,9 +9,7 @@ export type ContestSummary = {
 };
 
 export async function getContests(prisma: PrismaClient): Promise<ContestSummary[]> {
-  const contests = await prisma.contest.findMany({
-    orderBy: { id: "asc" },
-  });
+  const contests = await findAllContests(prisma);
 
   return contests.map((c) => ({
     id: c.id,

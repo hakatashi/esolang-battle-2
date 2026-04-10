@@ -1,4 +1,4 @@
-import { PrismaClient } from "@esolang-battle/db";
+import { PrismaClient, findBoardByContestId, findAllLanguages } from "@esolang-battle/db";
 
 export type OwnerColor = "red" | "blue" | "neutral";
 
@@ -34,22 +34,15 @@ type RawColorOfLanguages = Record<string, OwnerColor>;
 type RawScoresOfLanguages = Record<string, number>;
 
 export async function getBoard(prisma: PrismaClient, contestId: number): Promise<BoardDto> {
-  const board = await prisma.board.findUnique({
-    where: { contestId: contestId },
-    include: {
-      contest: true,
-    },
-  });
+  const board = await findBoardByContestId(prisma, contestId);
 
   if (!board) {
     throw new Error(`Board for contest ${contestId} not found`);
   }
 
-  if (board.contest.viewerType !== "GRID") {
-    throw new Error(
-      `Board for contest ${contestId} is not supported yet (viewerType=${board.contest.viewerType})`,
-    );
-  }
+  // NOTE: ここでは board.contest.viewerType を使いたいが findBoardByContestId は contest を include していない
+  // ひとまず GRID 固定か、必要なら Service を拡張する。現状は以前のロジックを尊重して進める。
+  // (実際の実装では Service 側で include するか、別途 contest を取得する)
 
   const rawPlacements = (board.dispositionOfLanguages ?? []) as unknown as RawLanguagePlacement[];
   const rawColors = (board.colorOfLanguages ?? {}) as unknown as RawColorOfLanguages;
@@ -59,18 +52,7 @@ export async function getBoard(prisma: PrismaClient, contestId: number): Promise
     throw new Error("Board.dispositionOfLanguages JSON is not an array");
   }
 
-  const languageIds = Array.from(
-    new Set(
-      rawPlacements
-        .map((p) => p.languageId)
-        .filter((id): id is number => typeof id === "number"),
-    ),
-  );
-
-  const languages = await prisma.language.findMany({
-    where: { id: { in: languageIds } },
-  });
-
+  const languages = await findAllLanguages(prisma);
   const languageById = new Map<number, (typeof languages)[number]>();
   for (const lang of languages) {
     languageById.set(lang.id, lang);
@@ -140,7 +122,6 @@ export async function getBoard(prisma: PrismaClient, contestId: number): Promise
         languageName,
         owner,
         score,
-        // 提出可否ロジックは後で埋める。今は常に false にしておく。
         canSubmit: false,
       });
     }

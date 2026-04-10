@@ -1,23 +1,13 @@
+import { PrismaClient, findBoardByContestId, updateBoardData } from "@esolang-battle/db";
 import type { OwnerColor } from "./getBoard";
-import { PrismaClient } from "@esolang-battle/db";
 
 /**
  * Board.lastProcessedSubmissionId より新しい Submission を反映して
  * Board.scoreOfLanguages / Board.colorOfLanguages / Board.lastProcessedSubmissionId
  * を更新するユーティリティ関数。
- *
- * 現在のルール（暫定）:
- * - Submission.score がその言語の現在スコアより小さい場合だけ更新する（コードゴルフ想定）。
- * - そのとき、その言語の色を Submission.user.team.color に更新する。
- * - チーム色が "red" / "blue" 以外の場合は "neutral" として扱う。
  */
 export async function updateBoardFromSubmissions(prisma: PrismaClient, contestId: number): Promise<void> {
-  const board = await prisma.board.findUnique({
-    where: { contestId: contestId },
-    include: {
-      contest: true,
-    },
-  });
+  const board = await findBoardByContestId(prisma, contestId);
 
   if (!board) {
     throw new Error(`Board for contest ${contestId} not found`);
@@ -25,20 +15,13 @@ export async function updateBoardFromSubmissions(prisma: PrismaClient, contestId
 
   const lastProcessedId = board.lastProcessedSubmissionId ?? 0;
 
-  // まだ処理していない Submission をすべて取得（この Board の contest に属するものだけ）。
   const newSubmissions = await prisma.submission.findMany({
     where: {
       id: { gt: lastProcessedId },
-      problem: {
-        contestId,
-      },
+      problem: { contestId },
     },
     include: {
-      user: {
-        include: {
-          teams: true,
-        },
-      },
+      user: { include: { teams: true } },
     },
     orderBy: [
       { submittedAt: "asc" },
@@ -50,7 +33,6 @@ export async function updateBoardFromSubmissions(prisma: PrismaClient, contestId
     return;
   }
 
-  // 既存のスコア・色設定をオブジェクトとして読み出す
   const scoreOfLanguages: Record<string, number> =
     (board.scoreOfLanguages as any as Record<string, number>) ?? {};
   const colorOfLanguages: Record<string, OwnerColor> =
@@ -80,30 +62,18 @@ export async function updateBoardFromSubmissions(prisma: PrismaClient, contestId
     }
   }
 
-  await prisma.board.update({
-    where: { contestId: contestId },
-    data: {
-      scoreOfLanguages,
-      colorOfLanguages,
-      lastProcessedSubmissionId: maxSeenSubmissionId,
-    },
+  await updateBoardData(prisma, contestId, {
+    scoreOfLanguages,
+    colorOfLanguages,
+    lastProcessedSubmissionId: maxSeenSubmissionId,
   });
 }
 
 /**
  * 盤面を Submission からフル再計算するユーティリティ関数。
- *
- * - lastProcessedSubmissionId に関係なく、そのコンテストの全 Submission を読み出す。
- * - Board.scoreOfLanguages / Board.colorOfLanguages を空の状態から再構築する。
- * - lastProcessedSubmissionId を「処理した Submission の最大 id」に更新する（Submission が無ければ null）。
  */
 export async function recomputeBoardFromSubmissions(prisma: PrismaClient, contestId: number): Promise<void> {
-  const board = await prisma.board.findUnique({
-    where: { contestId: contestId },
-    include: {
-      contest: true,
-    },
-  });
+  const board = await findBoardByContestId(prisma, contestId);
 
   if (!board) {
     throw new Error(`Board for contest ${contestId} not found`);
@@ -111,16 +81,10 @@ export async function recomputeBoardFromSubmissions(prisma: PrismaClient, contes
 
   const submissions = await prisma.submission.findMany({
     where: {
-      problem: {
-        contestId,
-      },
+      problem: { contestId },
     },
     include: {
-      user: {
-        include: {
-          teams: true,
-        },
-      },
+      user: { include: { teams: true } },
     },
     orderBy: [
       { submittedAt: "asc" },
@@ -129,13 +93,10 @@ export async function recomputeBoardFromSubmissions(prisma: PrismaClient, contes
   });
 
   if (submissions.length === 0) {
-    await prisma.board.update({
-      where: { contestId: contestId },
-      data: {
-        scoreOfLanguages: {},
-        colorOfLanguages: {},
-        lastProcessedSubmissionId: null,
-      },
+    await updateBoardData(prisma, contestId, {
+      scoreOfLanguages: {},
+      colorOfLanguages: {},
+      lastProcessedSubmissionId: null,
     });
     return;
   }
@@ -167,12 +128,9 @@ export async function recomputeBoardFromSubmissions(prisma: PrismaClient, contes
     }
   }
 
-  await prisma.board.update({
-    where: { contestId: contestId },
-    data: {
-      scoreOfLanguages,
-      colorOfLanguages,
-      lastProcessedSubmissionId: maxSeenSubmissionId,
-    },
+  await updateBoardData(prisma, contestId, {
+    scoreOfLanguages,
+    colorOfLanguages,
+    lastProcessedSubmissionId: maxSeenSubmissionId,
   });
 }
