@@ -68,6 +68,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {
                 name: 'users',
                 list: '/admin/users',
+                create: '/admin/users/create',
                 edit: '/admin/users/edit/:id',
                 meta: { label: 'Users', icon: <UserOutlined /> },
               },
@@ -142,9 +143,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             }}
           >
             <ThemedLayout
-              Title={({ collapsed }) => (
-                <ThemedTitle collapsed={collapsed} text="Esolang Battle Admin" />
-              )}
+              Title={({ collapsed }) => <ThemedTitle collapsed={collapsed} text="Admin" />}
             >
               {children}
             </ThemedLayout>

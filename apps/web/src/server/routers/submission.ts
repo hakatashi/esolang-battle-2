@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import {
   submissionFilterSchema,
   submissionIdSchema,
@@ -22,6 +24,11 @@ export const submissionRouter = router({
   }),
   getLanguages: publicProcedure.query(async ({ ctx }) => {
     return await findAllLanguages(ctx.prisma);
+  }),
+  getLanguage: publicProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
+    return await ctx.prisma.language.findUnique({
+      where: { id: input.id },
+    });
   }),
   getSubmissionDetail: protectedProcedure
     .input(submissionIdSchema)

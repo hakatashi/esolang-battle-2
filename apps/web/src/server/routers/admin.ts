@@ -55,6 +55,40 @@ export const adminRouter = router({
       teams: user.teams.map((t) => ({ id: t.id, color: t.color, contestId: t.contestId })),
     };
   }),
+  adminCreateUser: adminProcedure
+    .input(z.object({ name: z.string(), password: z.string(), isAdmin: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const { registerUser } = await import('@esolang-battle/db');
+      const user = await registerUser(ctx.prisma, input.name, input.password);
+      if (input.isAdmin) {
+        await ctx.prisma.user.update({ where: { id: user.id }, data: { isAdmin: true } });
+      }
+      return user;
+    }),
+  adminUpdateUser: adminProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        isAdmin: z.boolean().optional(),
+        password: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, password, ...data } = input;
+      let passwordHash = undefined;
+      if (password) {
+        const bcrypt = await import('bcryptjs');
+        passwordHash = await bcrypt.hash(password, 10);
+      }
+      return await ctx.prisma.user.update({
+        where: { id },
+        data: {
+          ...data,
+          password: passwordHash,
+        },
+      });
+    }),
   adminUpdateUserTeam: adminProcedure
     .input(updateUserTeamSchema)
     .mutation(async ({ ctx, input }) => {

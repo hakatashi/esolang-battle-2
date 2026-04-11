@@ -13,15 +13,35 @@ export default function BoardEdit() {
   const [form] = Form.useForm();
   const { formProps, saveButtonProps } = useForm({
     form: form,
+    redirect: false,
   });
   const { id } = useParsed();
   const boardId = id ? Number(id) : undefined;
 
-  // URLのIDから直接ボードデータを取得（queryResultの不具合回避）
+  // フォームの変更監視
+  const currentValues = Form.useWatch([], form);
+
+  // URLのIDから直接ボードデータを取得
   const { data: board, refetch: refetchBoard } = trpc.adminGetBoard.useQuery(
     { id: boardId ?? 0 },
     { enabled: !!boardId }
   );
+
+  const normalizeJson = (val: any) => {
+    if (!val) return '';
+    if (typeof val !== 'string') return JSON.stringify(val);
+    try {
+      return JSON.stringify(JSON.parse(val));
+    } catch (e) {
+      return val;
+    }
+  };
+
+  const isChanged =
+    board &&
+    currentValues &&
+    (normalizeJson(currentValues.config) !== normalizeJson(board.config) ||
+      normalizeJson(currentValues.state) !== normalizeJson(board.state));
 
   useEffect(() => {
     if (board) {
@@ -52,6 +72,7 @@ export default function BoardEdit() {
     <Edit
       saveButtonProps={{
         ...saveButtonProps,
+        disabled: saveButtonProps.disabled || !isChanged,
         onClick: (e) => {
           form.submit();
         },

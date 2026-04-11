@@ -1,12 +1,20 @@
 'use client';
-
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
+
+import { trpc } from '@/utils/trpc';
+import { ClockCircleOutlined } from '@ant-design/icons';
+import { Typography, Space, Tag, Spin } from 'antd';
+import dayjs from 'dayjs';
+
+const { Title, Text } = Typography;
 
 export default function ContestLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const params = useParams();
-  const contestId = params.id;
+  const contestId = Number(params.id);
+
+  const { data: contest, isLoading } = trpc.getContest.useQuery({ contestId });
 
   const tabs = [
     { id: 'board', label: '盤面', path: `/contest/${contestId}/board` },
@@ -20,6 +28,34 @@ export default function ContestLayout({ children }: { children: React.ReactNode 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          {isLoading ? (
+            <Spin />
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Title level={2} className="!mb-0">
+                {contest?.name}
+              </Title>
+              <Space split={<span className="text-gray-300">|</span>} className="text-gray-500">
+                <Space>
+                  <ClockCircleOutlined />
+                  <span>
+                    {dayjs(contest?.startAt).format('YYYY/MM/DD HH:mm')} 〜{' '}
+                    {dayjs(contest?.endAt).format('YYYY/MM/DD HH:mm')}
+                  </span>
+                </Space>
+                {dayjs().isAfter(dayjs(contest?.endAt)) ? (
+                  <Tag color="default">終了</Tag>
+                ) : dayjs().isBefore(dayjs(contest?.startAt)) ? (
+                  <Tag color="blue">開始前</Tag>
+                ) : (
+                  <Tag color="green">開催中</Tag>
+                )}
+              </Space>
+            </div>
+          )}
+        </div>
+
         <div className="overflow-hidden rounded-lg bg-white shadow">
           <div className="flex border-b border-gray-200">
             {tabs.map((tab) => {

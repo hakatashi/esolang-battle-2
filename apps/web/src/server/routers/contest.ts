@@ -17,6 +17,18 @@ export const contestRouter = router({
   getBoard: publicProcedure.input(contestIdSchema).query(async ({ ctx, input }) => {
     return await getBoard(ctx.prisma, input.contestId);
   }),
+  getContest: publicProcedure.input(contestIdSchema).query(async ({ ctx, input }) => {
+    const contest = await ctx.prisma.contest.findUnique({
+      where: { id: input.contestId },
+    });
+    if (!contest) throw new Error('Contest not found');
+    return {
+      id: contest.id,
+      name: contest.name,
+      startAt: contest.startAt.toISOString(),
+      endAt: contest.endAt.toISOString(),
+    };
+  }),
   getTeams: publicProcedure.input(contestIdSchema).query(async ({ ctx, input }) => {
     return await ctx.prisma.team.findMany({
       where: { contestId: input.contestId },

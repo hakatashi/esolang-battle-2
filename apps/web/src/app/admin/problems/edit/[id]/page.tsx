@@ -6,20 +6,72 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { BulkDeleteButton } from '@/components/admin/BulkDeleteButton';
 import { trpc } from '@/utils/trpc';
-import { EyeOutlined } from '@ant-design/icons';
+import { EyeOutlined, SaveOutlined } from '@ant-design/icons';
 import { DeleteButton, Edit, EditButton, useForm, useSelect, useTable } from '@refinedev/antd';
 import { useParsed } from '@refinedev/core';
-import { Button, Form, Input, Select, Space, Table, Tabs, Tag, Transfer } from 'antd';
+import { App, Button, Card, Form, Input, Select, Space, Table, Tabs, Tag, Transfer } from 'antd';
 
 export default function ProblemEdit() {
-  const { formProps, saveButtonProps, form } = useForm();
+  const { message } = App.useApp();
+  const { formProps, saveButtonProps, form } = useForm({
+    redirect: false,
+  });
+
+  // フォームの変更監視
+  const currentValues = Form.useWatch([], form);
+
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { id } = useParsed();
   const problemId = id ? Number(id) : undefined;
 
-  // URLパラメータから現在のタブを取得 (デフォルトは "info")
+  // --- 独立した言語管理ステート ---
+  const [targetKeys, setTargetKeys] = useState<number[]>([]);
+  const [initialKeys, setInitialKeys] = useState<number[]>([]);
+  const { data: problem, refetch: refetchProblem } = trpc.adminGetProblem.useQuery(
+    { id: problemId ?? 0 },
+    { enabled: !!problemId }
+  );
+
+  // 変更があるかどうかの判定 (既に取得済みの problem を使用)
+  const isInfoChanged =
+    problem &&
+    currentValues &&
+    (currentValues.title !== problem.title ||
+      currentValues.problemStatement !== problem.problemStatement ||
+      Number(currentValues.contestId) !== Number(problem.contestId));
+  const { data: allLanguages } = trpc.adminGetLanguages.useQuery();
+  const updateLanguagesMutation = trpc.adminUpdateProblemLanguages.useMutation();
+
+  // 初期ロード時
+  useEffect(() => {
+    if (problem?.acceptedLanguages) {
+      const ids = problem.acceptedLanguages.map((lang: any) => lang.id);
+      setTargetKeys(ids);
+      setInitialKeys(ids);
+    }
+  }, [problem]);
+
+  const isChanged =
+    JSON.stringify([...targetKeys].sort()) !== JSON.stringify([...initialKeys].sort());
+
+  const handleSaveLanguages = async () => {
+    if (!problemId) return;
+    try {
+      await updateLanguagesMutation.mutateAsync({
+        problemId,
+        languageIds: targetKeys,
+      });
+      message.success('Languages updated successfully');
+      setInitialKeys([...targetKeys]);
+      refetchProblem();
+    } catch (e: any) {
+      message.error('Failed to update languages: ' + e.message);
+    }
+  };
+  // ------------------------------
+
   const activeTab = searchParams.get('tab') || 'info';
 
   const handleTabChange = (key: string) => {
@@ -28,32 +80,23 @@ export default function ProblemEdit() {
     router.replace(`${pathname}?${params.toString()}`);
   };
 
-  // URLのIDから直接問題データを取得（ボタン用および初期値ロード用）
-  const { data: problem, refetch: refetchProblem } = trpc.adminGetProblem.useQuery(
-    { id: problemId ?? 0 },
-    { enabled: !!problemId }
-  );
-
-  // 初期値のロード: acceptedLanguages を languageIds に変換してフォームにセット
-  useEffect(() => {
-    if (problem?.acceptedLanguages) {
-      form.setFieldsValue({
-        languageIds: problem.acceptedLanguages.map((lang: any) => lang.id),
-      });
-    }
-  }, [problem, form]);
-
   const { selectProps: contestSelectProps } = useSelect({
     resource: 'contests',
     optionLabel: (item) => `${item.name}(#${item.id})`,
     optionValue: 'id',
   });
 
-  const { data: allLanguages } = trpc.adminGetLanguages.useQuery();
+  // タブに応じてメインの保存ボタンを隠すためのプロパティ
+  // infoタブ以外（言語設定やテストケース）ではメイン保存ボタンを非表示にする
+  const adjustedSaveButtonProps = {
+    ...saveButtonProps,
+    disabled: saveButtonProps.disabled || !isInfoChanged,
+    style: { display: activeTab === 'info' ? 'inline-flex' : 'none' },
+  };
 
   return (
     <Edit
-      saveButtonProps={saveButtonProps}
+      saveButtonProps={adjustedSaveButtonProps}
       headerButtons={({ defaultButtons }) => (
         <Space>
           {defaultButtons}
@@ -70,10 +113,10 @@ export default function ProblemEdit() {
         </Space>
       )}
     >
-      <Form {...formProps} layout="vertical">
-        <Tabs activeKey={activeTab} onChange={handleTabChange}>
-          <Tabs.TabPane tab="Basic Information" key="info">
-            <div style={{ padding: '16px 0' }}>
+      <Tabs activeKey={activeTab} onChange={handleTabChange}>
+        <Tabs.TabPane tab="Basic Information" key="info">
+          <div style={{ padding: '16px 0' }}>
+            <Form {...formProps} layout="vertical">
               <Form.Item label="ID" name="id">
                 <Input disabled />
               </Form.Item>
@@ -90,48 +133,57 @@ export default function ProblemEdit() {
               >
                 <Input.TextArea rows={15} />
               </Form.Item>
-            </div>
-          </Tabs.TabPane>
+            </Form>
+          </div>
+        </Tabs.TabPane>
 
-          <Tabs.TabPane tab="Submittable Languages" key="languages">
-            <div style={{ padding: '16px 0' }}>
-              <Form.Item
-                label="Select accepted languages for this problem"
-                name="languageIds"
-                valuePropName="targetKeys"
-                trigger="onChange"
-              >
-                <Transfer
-                  dataSource={
-                    allLanguages?.map((lang) => ({
-                      key: lang.id,
-                      title: lang.name,
-                      description: lang.description,
-                    })) || []
-                  }
-                  showSearch
-                  listStyle={{
-                    width: 300,
-                    height: 400,
-                  }}
-                  render={(item) => item.title}
-                  titles={['Available', 'Accepted']}
-                />
-              </Form.Item>
-            </div>
-          </Tabs.TabPane>
+        <Tabs.TabPane tab="Submittable Languages" key="languages">
+          <div style={{ padding: '16px 0' }}>
+            <Card
+              title="Select accepted languages for this problem"
+              extra={
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  onClick={handleSaveLanguages}
+                  loading={updateLanguagesMutation.isPending}
+                  disabled={!isChanged}
+                >
+                  Save Languages
+                </Button>
+              }
+            >
+              <Transfer
+                dataSource={
+                  allLanguages?.map((lang) => ({
+                    key: lang.id,
+                    title: lang.name,
+                    description: lang.description,
+                  })) || []
+                }
+                showSearch
+                listStyle={{
+                  width: '45%',
+                  height: 400,
+                }}
+                targetKeys={targetKeys}
+                onChange={(nextKeys) => setTargetKeys(nextKeys as number[])}
+                render={(item) => item.title}
+                titles={['Available', 'Accepted']}
+              />
+            </Card>
+          </div>
+        </Tabs.TabPane>
 
-          <Tabs.TabPane tab="Test Cases" key="testcases">
-            {problemId && <TestCasesSubList problemId={problemId} />}
-          </Tabs.TabPane>
-        </Tabs>
-      </Form>
+        <Tabs.TabPane tab="Test Cases" key="testcases">
+          {problemId && <TestCasesSubList problemId={problemId} />}
+        </Tabs.TabPane>
+      </Tabs>
     </Edit>
   );
 }
 
 function TestCasesSubList({ problemId }: { problemId: number }) {
-  const router = useRouter();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   const { tableProps } = useTable({
@@ -143,12 +195,6 @@ function TestCasesSubList({ problemId }: { problemId: number }) {
   return (
     <div style={{ padding: '16px 0' }}>
       <Space style={{ marginBottom: '16px' }}>
-        <Button
-          type="primary"
-          onClick={() => router.push(`/admin/testcases/create?problemId=${problemId}`)}
-        >
-          Add Test Case
-        </Button>
         <BulkDeleteButton
           resource="testcases"
           selectedKeys={selectedRowKeys}

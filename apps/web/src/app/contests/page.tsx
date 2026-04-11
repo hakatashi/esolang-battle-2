@@ -3,43 +3,95 @@
 import Link from 'next/link';
 
 import { trpc } from '@/utils/trpc';
+import { ClockCircleOutlined, TrophyOutlined } from '@ant-design/icons';
+import { Card, Col, Row, Spin, Tag, Typography, Space } from 'antd';
+import dayjs from 'dayjs';
+
+const { Title, Text, Paragraph } = Typography;
 
 export default function ContestsPage() {
   const { data: contests, isLoading, error } = trpc.getContests.useQuery();
 
+  const getStatusTag = (startAt: string, endAt: string) => {
+    const now = dayjs();
+    const start = dayjs(startAt);
+    const end = dayjs(endAt);
+
+    if (now.isAfter(end)) {
+      return <Tag color="default">終了</Tag>;
+    } else if (now.isBefore(start)) {
+      return <Tag color="blue">開始前</Tag>;
+    } else {
+      return <Tag color="green">開催中</Tag>;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8 border-b border-gray-200 pb-4">
-          <h1 className="text-2xl font-bold text-gray-900">コンテスト一覧</h1>
+    <div className="min-h-screen bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-12 text-center">
+          <Title level={2}>
+            <TrophyOutlined className="mr-3 text-yellow-500" />
+            コンテスト一覧
+          </Title>
+          <Paragraph className="text-gray-500">
+            開催中および過去のコンテストを確認できます。
+          </Paragraph>
         </div>
 
         {isLoading ? (
-          <div className="py-12 text-center">
-            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Loading contests...</p>
+          <div className="flex h-64 items-center justify-center">
+            <Spin size="large" tip="Loading contests..." />
           </div>
         ) : error ? (
-          <div className="mb-8 border-l-4 border-red-400 bg-red-50 p-4">
-            <p className="text-red-700">Error: {error.message}</p>
-          </div>
+          <Card className="border-red-200 bg-red-50">
+            <Text type="danger">Error: {error.message}</Text>
+          </Card>
         ) : !contests || contests.length === 0 ? (
-          <div className="rounded-lg bg-white py-12 text-center shadow">
-            <p className="text-gray-500">コンテストがありません。</p>
-          </div>
+          <Card className="text-center text-gray-500">
+            コンテストがありません。
+          </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <Row gutter={[24, 24]}>
             {contests.map((c) => (
-              <Link
-                key={c.id}
-                href={`/contest/${c.id}/board`}
-                className="block rounded-lg bg-white p-6 shadow transition-shadow hover:shadow-md"
-              >
-                <h2 className="mb-2 text-xl font-semibold text-gray-900">{c.name}</h2>
-                <p className="text-sm text-gray-500">ID: {c.id}</p>
-              </Link>
+              <Col xs={24} sm={12} lg={8} key={c.id}>
+                <Link href={`/contest/${c.id}/board`}>
+                  <Card
+                    hoverable
+                    className="h-full border-none shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+                    title={
+                      <div className="flex items-center justify-between">
+                        <span className="truncate">{c.name}</span>
+                        {getStatusTag(c.startAt, c.endAt)}
+                      </div>
+                    }
+                  >
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-1">
+                        <Text type="secondary" className="text-xs uppercase font-bold">
+                          開催期間
+                        </Text>
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <ClockCircleOutlined className="text-blue-500" />
+                          <span className="text-sm">
+                            {dayjs(c.startAt).format('YYYY/MM/DD HH:mm')} 〜
+                          </span>
+                        </div>
+                        <div className="ml-6 text-sm text-gray-700">
+                          {dayjs(c.endAt).format('YYYY/MM/DD HH:mm')}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between border-t pt-4">
+                        <Text type="secondary" className="text-xs">ID: {c.id}</Text>
+                        <Text className="text-blue-600 font-medium">参加する →</Text>
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
+              </Col>
             ))}
-          </div>
+          </Row>
         )}
       </div>
     </div>

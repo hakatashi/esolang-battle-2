@@ -1,10 +1,32 @@
 'use client';
 
+import { trpc } from '@/utils/trpc';
 import { Edit, useForm, useSelect } from '@refinedev/antd';
+import { useParsed } from '@refinedev/core';
 import { Checkbox, Form, Input, Select } from 'antd';
 
 export default function TestCaseEdit() {
-  const { formProps, saveButtonProps } = useForm();
+  const { id } = useParsed();
+  const testCaseId = id ? Number(id) : undefined;
+
+  const { formProps, saveButtonProps, form } = useForm({
+    redirect: false,
+  });
+
+  const { data: testCase } = trpc.adminGetTestCase.useQuery(
+    { id: testCaseId ?? 0 },
+    { enabled: !!testCaseId }
+  );
+
+  const currentValues = Form.useWatch([], form);
+
+  const isChanged =
+    testCase &&
+    currentValues &&
+    (currentValues.input !== testCase.input ||
+      currentValues.output !== testCase.output ||
+      currentValues.isSample !== testCase.isSample ||
+      currentValues.checkerScript !== testCase.checkerScript);
 
   const { selectProps: problemSelectProps } = useSelect({
     resource: 'problems',
@@ -13,7 +35,9 @@ export default function TestCaseEdit() {
   });
 
   return (
-    <Edit saveButtonProps={saveButtonProps}>
+    <Edit
+      saveButtonProps={{ ...saveButtonProps, disabled: saveButtonProps.disabled || !isChanged }}
+    >
       <Form {...formProps} layout="vertical">
         <Form.Item label="Problem" name="problemId" rules={[{ required: true }]}>
           <Select {...problemSelectProps} disabled />

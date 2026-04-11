@@ -3,9 +3,13 @@
 import React from 'react';
 
 import { trpc } from '@/utils/trpc';
-import { Alert, Spin } from 'antd';
+import { ClockCircleOutlined } from '@ant-design/icons';
+import { Alert, Spin, Typography } from 'antd';
+import dayjs from 'dayjs';
 
 import { BoardData, BoardState } from '@esolang-battle/common';
+
+const { Text } = Typography;
 
 import { CrossGridBoard } from './engines/CrossGridBoard';
 import { GridBoard } from './engines/GridBoard';
@@ -128,17 +132,25 @@ export function BoardRenderer({ initialData }: { initialData: BoardData | null }
   }
 
   return (
-    <div className="flex h-full w-full items-center justify-center overflow-auto p-4">
-      {isLoadingTeams && !teams ? (
-        <Spin />
-      ) : (
-        <EngineComponent
-          config={board.config}
-          state={board.state || {}}
-          contestId={board.contestId}
-          teamColors={teamColors}
-        />
-      )}
+    <div className="flex h-full w-full flex-col items-center gap-2 overflow-hidden">
+      <div className="flex w-full items-center justify-end px-4">
+        <Text type="secondary" className="flex items-center gap-1 text-[10px]">
+          <ClockCircleOutlined />
+          最終更新: {dayjs(board.lastUpdated).format('YYYY/MM/DD HH:mm:ss')}
+        </Text>
+      </div>
+      <div className="flex h-full w-full items-center justify-center overflow-auto p-4 pt-0">
+        {isLoadingTeams && !teams ? (
+          <Spin />
+        ) : (
+          <EngineComponent
+            config={board.config}
+            state={board.state || {}}
+            contestId={board.contestId}
+            teamColors={teamColors}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -1,13 +1,36 @@
 'use client';
 
+import { trpc } from '@/utils/trpc';
 import { Edit, useForm } from '@refinedev/antd';
+import { useParsed } from '@refinedev/core';
 import { Form, Input } from 'antd';
 
 export default function LanguageEdit() {
-  const { formProps, saveButtonProps } = useForm();
+  const { id } = useParsed();
+  const languageId = id ? Number(id) : undefined;
+
+  const { formProps, saveButtonProps, form } = useForm({
+    redirect: false,
+  });
+
+  const { data: language } = trpc.adminGetLanguage.useQuery(
+    { id: languageId ?? 0 },
+    { enabled: !!languageId }
+  );
+
+  const currentValues = Form.useWatch([], form);
+
+  const isChanged =
+    language &&
+    currentValues &&
+    (currentValues.name !== language.name ||
+      currentValues.description !== language.description ||
+      currentValues.dockerImageId !== language.dockerImageId);
 
   return (
-    <Edit saveButtonProps={saveButtonProps}>
+    <Edit
+      saveButtonProps={{ ...saveButtonProps, disabled: saveButtonProps.disabled || !isChanged }}
+    >
       <Form {...formProps} layout="vertical">
         <Form.Item label="Name" name="name" rules={[{ required: true }]}>
           <Input />

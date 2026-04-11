@@ -29,9 +29,25 @@ import {
 import dayjs from 'dayjs';
 
 export default function ContestEdit() {
-  const { formProps, saveButtonProps } = useForm();
+  const { formProps, saveButtonProps, form } = useForm({
+    redirect: false,
+  });
   const { id } = useParsed();
   const contestId = id ? Number(id) : undefined;
+
+  // フォームの変更監視
+  const currentValues = Form.useWatch([], form);
+  const { data: initialContest } = trpc.adminGetContest.useQuery(
+    { id: contestId ?? 0 },
+    { enabled: !!contestId }
+  );
+
+  const isChanged =
+    initialContest &&
+    currentValues &&
+    (currentValues.name !== initialContest.name ||
+      dayjs(currentValues.startAt).toISOString() !== dayjs(initialContest.startAt).toISOString() ||
+      dayjs(currentValues.endAt).toISOString() !== dayjs(initialContest.endAt).toISOString());
 
   const router = useRouter();
   const pathname = usePathname();
@@ -44,6 +60,12 @@ export default function ContestEdit() {
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', key);
     router.replace(`${pathname}?${params.toString()}`);
+  };
+
+  const adjustedSaveButtonProps = {
+    ...saveButtonProps,
+    disabled: saveButtonProps.disabled || !isChanged,
+    style: { display: activeTab === 'info' ? 'inline-flex' : 'none' },
   };
 
   const { data: board, isLoading: isLoadingBoard } = trpc.adminGetBoardByContestId.useQuery(
@@ -70,7 +92,7 @@ export default function ContestEdit() {
 
   return (
     <Edit
-      saveButtonProps={saveButtonProps}
+      saveButtonProps={adjustedSaveButtonProps}
       headerButtons={({ defaultButtons }) => (
         <Space>
           {defaultButtons}
@@ -331,6 +353,26 @@ function BoardSubEdit({ contestId }: { contestId: number }) {
   const { message } = App.useApp();
   const [form] = Form.useForm();
 
+  // フォームの変更監視
+  const currentValues = Form.useWatch([], form);
+
+  const normalizeJson = (val: any) => {
+    if (!val) return '';
+    if (typeof val !== 'string') return JSON.stringify(val);
+    try {
+      return JSON.stringify(JSON.parse(val));
+    } catch (e) {
+      return val;
+    }
+  };
+
+  const isChanged =
+    board &&
+    currentValues &&
+    (currentValues.type !== board.type ||
+      normalizeJson(currentValues.config) !== normalizeJson(board.config) ||
+      normalizeJson(currentValues.state) !== normalizeJson(board.state));
+
   useEffect(() => {
     if (board) {
       form.setFieldsValue({
@@ -408,7 +450,7 @@ function BoardSubEdit({ contestId }: { contestId: number }) {
                 type="primary"
                 onClick={() => form.submit()}
                 loading={upsertBoardMutation.isPending}
-                disabled={upsertBoardMutation.isPending}
+                disabled={upsertBoardMutation.isPending || !isChanged}
               >
                 {board ? 'Save Changes' : 'Create Board'}
               </Button>
