@@ -1,16 +1,22 @@
 'use client';
 
-import { Edit, useForm } from '@refinedev/antd';
-import { Checkbox, Form, Input } from 'antd';
+import { Edit, useForm, useSelect } from '@refinedev/antd';
+import { Checkbox, Form, Input, Select } from 'antd';
 
 export default function TestCaseEdit() {
   const { formProps, saveButtonProps } = useForm();
 
+  const { selectProps: problemSelectProps } = useSelect({
+    resource: 'problems',
+    optionLabel: (item) => `${item.title} (#${item.id})`,
+    optionValue: 'id',
+  });
+
   return (
     <Edit saveButtonProps={saveButtonProps}>
       <Form {...formProps} layout="vertical">
-        <Form.Item label="Problem ID" name="problemId" rules={[{ required: true }]}>
-          <Input type="number" disabled />
+        <Form.Item label="Problem" name="problemId" rules={[{ required: true }]}>
+          <Select {...problemSelectProps} disabled />
         </Form.Item>
         <Form.Item label="Input" name="input" rules={[{ required: true }]}>
           <Input.TextArea rows={5} style={{ fontFamily: 'monospace' }} />

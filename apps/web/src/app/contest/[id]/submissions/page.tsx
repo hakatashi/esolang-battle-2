@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
 import { trpc } from '@/utils/trpc';
+import { Button, Table, Tag } from 'antd';
+import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import type { FilterValue, SorterResult } from 'antd/es/table/interface';
 
 type Scope = 'self' | 'team' | 'all';
 
@@ -15,12 +18,37 @@ export default function SubmissionsPage() {
 
   const { data: me } = trpc.me.useQuery();
   const [scope, setScope] = useState<Scope>('self');
+  const [tableParams, setTableParams] = useState<{
+    sortField?: string;
+    sortOrder?: string;
+    filters?: Record<string, FilterValue | null>;
+  }>({});
 
   const myTeam = me?.teams.find((t) => t.contestId === contestId);
 
+  // フィルタとソートの構築
   const filter: any = { contestId };
   if (scope === 'self' && me?.id) filter.userId = Number(me.id);
   if (scope === 'team' && myTeam?.id) filter.teamId = Number(myTeam.id);
+
+  // テーブルのフィルタ（問題と言語）をバックエンドフィルタに統合
+  if (tableParams.filters?.problemId) {
+    const selected = tableParams.filters.problemId;
+    if (selected && selected.length > 0) {
+      filter.problemId = selected.map(Number);
+    }
+  }
+  if (tableParams.filters?.languageId) {
+    const selected = tableParams.filters.languageId;
+    if (selected && selected.length > 0) {
+      filter.languageId = selected.map(Number);
+    }
+  }
+
+  if (tableParams.sortField) {
+    filter.orderBy = tableParams.sortField;
+    filter.order = tableParams.sortOrder === 'ascend' ? 'asc' : 'desc';
+  }
 
   const {
     data: submissions,
@@ -28,146 +56,145 @@ export default function SubmissionsPage() {
     error,
   } = trpc.getSubmissions.useQuery(filter, {
     enabled: !!me,
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
 
-  if (isLoading) return <div className="py-4">Loading submissions...</div>;
-  if (error) return <div className="py-4 text-red-600">Error: {error.message}</div>;
+  const { data: problems } = trpc.listProblems.useQuery({ contestId });
+  const { data: languages } = trpc.getLanguages.useQuery();
+
+  const handleTableChange = (
+    pagination: TablePaginationConfig,
+    filters: Record<string, FilterValue | null>,
+    sorter: SorterResult<any> | SorterResult<any>[]
+  ) => {
+    const s = Array.isArray(sorter) ? sorter[0] : sorter;
+    setTableParams({
+      filters,
+      sortField: s.field as string,
+      sortOrder: s.order as string,
+    });
+  };
+
+  const columns: ColumnsType<any> = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      key: 'id',
+      sorter: true,
+      width: 80,
+      render: (id: number) => (
+        <Link href={`/contest/${contestId}/submissions/${id}`} className="font-mono text-blue-600">
+          {id}
+        </Link>
+      ),
+    },
+    {
+      title: 'ユーザ',
+      key: 'user',
+      render: (_, record) => record.user.name,
+    },
+    {
+      title: 'チーム',
+      key: 'team',
+      render: (_, record) => {
+        const team = record.user.teams.find((t: any) => t.contestId === contestId);
+        return team ? (
+          <Tag
+            color={
+              team.color === 'red' ? 'error' : team.color === 'blue' ? 'processing' : undefined
+            }
+          >
+            {team.color}
+          </Tag>
+        ) : (
+          '-'
+        );
+      },
+    },
+    {
+      title: '問題',
+      dataIndex: 'problemId',
+      key: 'problemId',
+      filters: problems?.map((p) => ({ text: p.title, value: p.id })),
+      filterSearch: true,
+      render: (_, record) => record.problem.title,
+    },
+    {
+      title: '言語',
+      dataIndex: 'languageId',
+      key: 'languageId',
+      filters: languages?.map((l) => ({ text: l.name, value: l.id })),
+      filterSearch: true,
+      render: (_, record) => record.language.name,
+    },
+    {
+      title: '長',
+      dataIndex: 'codeLength',
+      key: 'codeLength',
+      sorter: true,
+      align: 'center',
+    },
+    {
+      title: 'スコア',
+      dataIndex: 'score',
+      key: 'score',
+      sorter: true,
+      align: 'center',
+      render: (score: number | null) =>
+        score !== null ? (
+          <span className="font-mono text-lg font-bold text-blue-600">{score}</span>
+        ) : (
+          <span className="animate-pulse text-xs italic text-gray-400">採点中...</span>
+        ),
+    },
+    {
+      title: '提出時刻',
+      dataIndex: 'submittedAt',
+      key: 'submittedAt',
+      sorter: true,
+      render: (date: string) => new Date(date).toLocaleString(),
+    },
+    {
+      title: '詳細',
+      key: 'action',
+      render: (_, record) => (
+        <Link href={`/contest/${contestId}/submissions/${record.id}`} className="text-blue-600">
+          詳細
+        </Link>
+      ),
+    },
+  ];
 
   return (
-    <div className="w-full max-w-6xl">
-      <div className="mb-6 flex gap-2">
-        <button
-          onClick={() => setScope('self')}
-          disabled={scope === 'self'}
-          className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-            scope === 'self'
-              ? 'cursor-default bg-blue-600 text-white'
-              : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-          }`}
-        >
+    <div className="space-y-6">
+      <div className="flex gap-2">
+        <Button type={scope === 'self' ? 'primary' : 'default'} onClick={() => setScope('self')}>
           自分の提出
-        </button>
-        <button
+        </Button>
+        <Button
+          type={scope === 'team' ? 'primary' : 'default'}
+          disabled={!myTeam}
           onClick={() => setScope('team')}
-          disabled={scope === 'team' || !myTeam}
-          className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-            scope === 'team'
-              ? 'cursor-default bg-blue-600 text-white'
-              : !myTeam
-                ? 'cursor-not-allowed border border-gray-200 bg-gray-100 text-gray-400'
-                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-          }`}
         >
           自チームの提出
-        </button>
+        </Button>
         {me?.isAdmin && (
-          <button
-            onClick={() => setScope('all')}
-            disabled={scope === 'all'}
-            className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-              scope === 'all'
-                ? 'cursor-default bg-blue-600 text-white'
-                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-          >
+          <Button type={scope === 'all' ? 'primary' : 'default'} onClick={() => setScope('all')}>
             全ての提出
-          </button>
+          </Button>
         )}
       </div>
 
-      {!submissions || submissions.length === 0 ? (
-        <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 py-12 text-center">
-          <p className="text-gray-500">提出はまだありません。</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200 bg-white">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  ID
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  ユーザ
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  チーム
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  問題
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  言語
-                </th>
-                <th className="px-4 py-3 text-left text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  長
-                </th>
-                <th className="px-4 py-3 text-left text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  スコア
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  提出時刻
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  詳細
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {submissions.map((s) => (
-                <tr key={s.id} className="transition-colors hover:bg-gray-50">
-                  <td className="whitespace-nowrap px-4 py-3 font-mono text-sm">
-                    <Link
-                      href={`/contest/${contestId}/submissions/${s.id}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {s.id}
-                    </Link>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-                    {s.user.name}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm">
-                    <span
-                      className={`rounded px-2 py-1 text-xs font-bold text-white bg-${s.user.teams.find((t) => t.contestId === contestId)?.color === 'red' ? 'red-600' : s.user.teams.find((t) => t.contestId === contestId)?.color === 'blue' ? 'blue-700' : 'gray-500'}`}
-                    >
-                      {s.user.teams.find((t) => t.contestId === contestId)?.color ?? '-'}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
-                    {s.problem.title}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
-                    {s.language.name}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center font-mono text-sm text-gray-700">
-                    {s.codeLength}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center text-sm">
-                    {s.score !== null ? (
-                      <span className="font-mono text-lg font-bold text-blue-600">{s.score}</span>
-                    ) : (
-                      <span className="animate-pulse text-xs italic text-gray-400">採点中...</span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                    {new Date(s.submittedAt).toLocaleString()}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 font-mono text-sm">
-                    <Link
-                      href={`/contest/${contestId}/submissions/${s.id}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {s.id}
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <Table
+        columns={columns}
+        dataSource={submissions}
+        rowKey="id"
+        loading={isLoading}
+        onChange={handleTableChange}
+        pagination={{ pageSize: 20 }}
+        size="middle"
+        bordered
+      />
     </div>
   );
 }

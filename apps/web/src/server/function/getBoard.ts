@@ -1,11 +1,11 @@
 import { BoardData, BoardType } from '@esolang-battle/common';
 import { PrismaClient, findBoardByContestId } from '@esolang-battle/db';
 
-export async function getBoard(prisma: PrismaClient, contestId: number): Promise<BoardData> {
+export async function getBoard(prisma: PrismaClient, contestId: number): Promise<BoardData | null> {
   const board = await findBoardByContestId(prisma, contestId);
 
   if (!board) {
-    throw new Error(`Board for contest ${contestId} not found`);
+    return null;
   }
 
   return {

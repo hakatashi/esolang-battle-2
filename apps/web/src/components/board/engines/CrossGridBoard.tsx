@@ -10,9 +10,15 @@ type CrossGridBoardProps = {
   config: CrossGridBoardConfig;
   state: BoardState;
   contestId: number;
+  teamColors: Record<number, string>;
 };
 
-export const CrossGridBoard: React.FC<CrossGridBoardProps> = ({ config, state, contestId }) => {
+export const CrossGridBoard: React.FC<CrossGridBoardProps> = ({
+  config,
+  state,
+  contestId,
+  teamColors,
+}) => {
   const router = useRouter();
   const { problemIds, languageIds, problemInfo, languageInfo } = config;
 
@@ -20,9 +26,10 @@ export const CrossGridBoard: React.FC<CrossGridBoardProps> = ({ config, state, c
     router.push(`/contest/${contestId}/submit?problemId=${problemId}&languageId=${languageId}`);
   };
 
-  const getCellBgColor = (ownerTeamId: number | null) => {
-    if (ownerTeamId === null) return 'bg-gray-800';
-    return ownerTeamId % 2 === 0 ? 'bg-red-600' : 'bg-blue-700';
+  const getCellStyle = (ownerTeamId: number | null): React.CSSProperties => {
+    if (ownerTeamId === null) return { backgroundColor: '#ddd', color: '#333' };
+    const color = teamColors[ownerTeamId] || '#4b5563';
+    return { backgroundColor: color, color: '#fff' };
   };
 
   return (
@@ -54,12 +61,11 @@ export const CrossGridBoard: React.FC<CrossGridBoardProps> = ({ config, state, c
                   key={lId}
                   role="button"
                   tabIndex={0}
-                  className={`flex h-16 w-24 cursor-pointer flex-col items-center justify-center border-r border-gray-700 transition-all last:border-r-0 hover:bg-opacity-80 ${getCellBgColor(cell?.ownerTeamId ?? null)}`}
+                  className={`flex h-16 w-24 cursor-pointer flex-col items-center justify-center border-r border-gray-700 transition-all last:border-r-0 hover:bg-opacity-80`}
+                  style={getCellStyle(cell?.ownerTeamId ?? null)}
                   onClick={() => handleCellClick(pId, lId)}
                 >
-                  {cell?.score !== null && (
-                    <div className="text-xs font-bold text-white">{cell.score}</div>
-                  )}
+                  {cell?.score !== null && <div className="text-xs font-bold">{cell.score}</div>}
                 </div>
               );
             })}

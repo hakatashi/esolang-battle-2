@@ -27,9 +27,12 @@ export const submissionFilterSchema = z
   .object({
     userId: z.number().optional(),
     teamId: z.number().optional(),
-    problemId: z.number().optional(),
-    languageId: z.number().optional(),
+    problemId: z.union([z.number(), z.array(z.number())]).optional(),
+    languageId: z.union([z.number(), z.array(z.number())]).optional(),
     contestId: z.number().optional(),
+    status: z.enum(['AC', 'WA', 'TLE', 'RE', 'WJ', 'ALL']).optional(),
+    orderBy: z.enum(['id', 'submittedAt', 'codeLength', 'score']).optional(),
+    order: z.enum(['asc', 'desc']).optional(),
   })
   .optional();
 

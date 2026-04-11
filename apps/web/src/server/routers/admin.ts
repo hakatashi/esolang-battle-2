@@ -344,4 +344,41 @@ export const adminRouter = router({
     .mutation(async ({ ctx, input }) => {
       return await recalculateBoard(ctx.prisma, input.boardId);
     }),
+
+  // Submissions
+  adminDeleteSubmission: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.prisma.submission.delete({
+        where: { id: input.id },
+      });
+    }),
+  adminDeleteSubmissions: adminProcedure
+    .input(z.object({ ids: z.array(z.number()) }))
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.prisma.submission.deleteMany({
+        where: { id: { in: input.ids } },
+      });
+    }),
+  adminUpdateSubmission: adminProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        problemId: z.number().optional(),
+        languageId: z.number().optional(),
+        score: z.number().nullable().optional(),
+        code: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, code, ...data } = input;
+      return await ctx.prisma.submission.update({
+        where: { id },
+        data: {
+          ...data,
+          code,
+          codeLength: code ? code.length : undefined,
+        },
+      });
+    }),
 });

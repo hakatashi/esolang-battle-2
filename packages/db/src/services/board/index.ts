@@ -36,8 +36,15 @@ export async function updateBoardFromSubmission(
   if (!submission.score) return; // 正解でない場合は更新不要
 
   const engine = getBoardEngine(board.type);
-  const state = board.state as BoardState;
   const config = board.config as any;
+  let state = board.state as BoardState;
+
+  // state が空、またはターゲットのセルが存在しない場合は初期状態で補完する
+  const targetCellId = engine.getTargetCellId(config, submission as unknown as BoardSubmission);
+  if (Object.keys(state).length === 0 || (targetCellId && !state[targetCellId])) {
+    const initialState = engine.createInitialState(config);
+    state = { ...initialState, ...state };
+  }
 
   const newState = engine.calculateUpdate(config, state, submission as unknown as BoardSubmission);
 
@@ -64,7 +71,7 @@ export async function recalculateBoard(prisma: PrismaClient, boardId: number) {
   const submissions = await prisma.submission.findMany({
     where: {
       problem: { contestId: board.contestId },
-      score: { not: null },
+      score: { gt: 0 }, // 正解（スコアが0より大きい）のみ対象
     },
     orderBy: { submittedAt: 'asc' }, // 古い提出から順番に適用
     include: {
@@ -79,6 +86,7 @@ export async function recalculateBoard(prisma: PrismaClient, boardId: number) {
   });
 
   for (const submission of submissions) {
+    if (!submission.score || submission.score <= 0) continue;
     state = engine.calculateUpdate(
       board.config as any,
       state,

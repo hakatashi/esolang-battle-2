@@ -68,6 +68,7 @@ async function runExecutionBatch(
     await fs.writeFile(path.join(tmpDir, 'runner.sh'), scriptLines.join('\n'), { mode: 0o755 });
 
     // 2. 実行: コンテナの作成と開始
+    console.log(`Starting container with image: ${image}`);
     const container = await docker.createContainer({
       Image: image,
       Cmd: ['sh', '/volume/runner.sh'],

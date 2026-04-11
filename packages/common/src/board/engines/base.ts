@@ -14,6 +14,12 @@ export abstract class BaseBoardEngine<
     const team = submission.user.teams[0];
     if (!team) return state;
 
+    // 言語指定がないセルは提出による占領を許可しない（初期拠点用）
+    const cellInfo = (config as any).cellInfo?.[targetCellId];
+    if (cellInfo && cellInfo.languageId === undefined) {
+      return state;
+    }
+
     if (cell.score !== null && submission.codeLength >= cell.score) {
       return state;
     }

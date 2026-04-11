@@ -6,22 +6,25 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { BulkDeleteButton } from '@/components/admin/BulkDeleteButton';
 import { trpc } from '@/utils/trpc';
-import { EyeOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons';
 import { DeleteButton, Edit, EditButton, useForm, useTable } from '@refinedev/antd';
 import { useParsed } from '@refinedev/core';
 import {
+  App,
   Button,
   Card,
   DatePicker,
   Form,
   Input,
+  InputNumber,
+  Modal,
+  Popconfirm,
   Select,
   Space,
   Table,
   Tabs,
   Tag,
   Tooltip,
-  message,
 } from 'antd';
 import dayjs from 'dayjs';
 
@@ -124,8 +127,199 @@ export default function ContestEdit() {
         <Tabs.TabPane tab="Teams" key="teams">
           {contestId && <TeamSubList contestId={contestId} />}
         </Tabs.TabPane>
+
+        <Tabs.TabPane tab="Submissions" key="submissions">
+          {contestId && <SubmissionSubList contestId={contestId} />}
+        </Tabs.TabPane>
       </Tabs>
     </Edit>
+  );
+}
+
+function SubmissionSubList({ contestId }: { contestId: number }) {
+  const { message } = App.useApp();
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const {
+    data: submissions,
+    isLoading,
+    refetch,
+  } = trpc.getSubmissions.useQuery({
+    contestId,
+  });
+
+  const { data: languages } = trpc.getLanguages.useQuery();
+  const { data: problems } = trpc.adminGetProblems.useQuery({ contestId });
+
+  const deleteMutation = trpc.adminDeleteSubmission.useMutation();
+  const updateMutation = trpc.adminUpdateSubmission.useMutation();
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingSubmission, setEditingSubmission] = useState<any>(null);
+  const [editForm] = Form.useForm();
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteMutation.mutateAsync({ id });
+      message.success('Submission deleted');
+      refetch();
+    } catch (e: any) {
+      message.error('Delete failed: ' + e.message);
+    }
+  };
+
+  const handleEdit = (record: any) => {
+    setEditingSubmission(record);
+    editForm.setFieldsValue({
+      problemId: record.problem?.id,
+      languageId: record.language?.id,
+      score: record.score,
+      code: record.code,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdate = async (values: any) => {
+    try {
+      await updateMutation.mutateAsync({
+        id: editingSubmission.id,
+        ...values,
+        score: values.score === null ? null : Number(values.score),
+      });
+      message.success('Submission updated');
+      setIsEditModalOpen(false);
+      refetch();
+    } catch (e: any) {
+      message.error('Update failed: ' + e.message);
+    }
+  };
+
+  const columns = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      key: 'id',
+    },
+    {
+      title: 'Problem',
+      dataIndex: ['problem', 'title'],
+      key: 'problem',
+    },
+    {
+      title: 'User',
+      dataIndex: ['user', 'name'],
+      key: 'user',
+    },
+    {
+      title: 'Language',
+      dataIndex: ['language', 'name'],
+      key: 'language',
+    },
+    {
+      title: 'Score',
+      dataIndex: 'score',
+      key: 'score',
+      render: (score: number | null) =>
+        score !== null ? <Tag color="blue">{score}</Tag> : <Tag>WJ</Tag>,
+    },
+    {
+      title: 'Length',
+      dataIndex: 'codeLength',
+      key: 'codeLength',
+      render: (len: number) => `${len} bytes`,
+    },
+    {
+      title: 'Submitted At',
+      dataIndex: 'submittedAt',
+      key: 'submittedAt',
+      render: (date: Date) => dayjs(date).format('YYYY-MM-DD HH:mm:ss'),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_: any, record: any) => (
+        <Space>
+          <Tooltip title="View Details">
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() =>
+                window.open(`/contest/${contestId}/submissions/${record.id}`, '_blank')
+              }
+            />
+          </Tooltip>
+          <Tooltip title="Edit Submission">
+            <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
+          </Tooltip>
+          <Popconfirm
+            title="Are you sure you want to delete this submission?"
+            onConfirm={() => handleDelete(record.id)}
+          >
+            <Button
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              loading={deleteMutation.isPending && deleteMutation.variables?.id === record.id}
+            />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div style={{ padding: '16px 0' }}>
+      <Space style={{ marginBottom: '16px' }}>
+        <BulkDeleteButton
+          resource="submissions"
+          selectedKeys={selectedRowKeys}
+          onSuccess={() => {
+            setSelectedRowKeys([]);
+            refetch();
+          }}
+        />
+      </Space>
+      <Table
+        dataSource={submissions ?? []}
+        columns={columns}
+        rowKey="id"
+        loading={isLoading}
+        pagination={{ pageSize: 50 }}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: (keys) => setSelectedRowKeys(keys),
+        }}
+      />
+
+      <Modal
+        title={`Edit Submission #${editingSubmission?.id}`}
+        open={isEditModalOpen}
+        onOk={() => editForm.submit()}
+        onCancel={() => setIsEditModalOpen(false)}
+        width={800}
+        confirmLoading={updateMutation.isPending}
+      >
+        <Form form={editForm} layout="vertical" onFinish={handleUpdate}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <Form.Item label="Problem" name="problemId" rules={[{ required: true }]}>
+              <Select options={problems?.map((p) => ({ label: p.title, value: p.id }))} />
+            </Form.Item>
+            <Form.Item label="Language" name="languageId" rules={[{ required: true }]}>
+              <Select options={languages?.map((l) => ({ label: l.name, value: l.id }))} />
+            </Form.Item>
+          </div>
+          <Form.Item label="Score" name="score">
+            <InputNumber style={{ width: '100%' }} placeholder="Score (null for WJ)" />
+          </Form.Item>
+          <Form.Item label="Source Code" name="code" rules={[{ required: true }]}>
+            <Input.TextArea rows={15} style={{ fontFamily: 'monospace' }} />
+          </Form.Item>
+          <p style={{ color: 'gray', fontSize: '12px' }}>
+            Note: Updating source code will automatically update the code length. To trigger
+            re-evaluation, use the recalculate feature.
+          </p>
+        </Form>
+      </Modal>
+    </div>
   );
 }
 
@@ -134,33 +328,46 @@ function BoardSubEdit({ contestId }: { contestId: number }) {
   const upsertBoardMutation = trpc.adminUpsertBoard.useMutation();
   const recalculateMutation = trpc.adminRecalculateBoard.useMutation();
 
-  const [type, setType] = useState('GRID');
-  const [config, setConfig] = useState('');
-  const [state, setState] = useState('');
+  const { message } = App.useApp();
+  const [form] = Form.useForm();
 
   useEffect(() => {
     if (board) {
-      setType(board.type);
-      setConfig(JSON.stringify(board.config, null, 2));
-      setState(JSON.stringify(board.state, null, 2));
+      form.setFieldsValue({
+        type: board.type,
+        config: JSON.stringify(board.config, null, 2),
+        state: JSON.stringify(board.state, null, 2),
+      });
+    } else {
+      form.setFieldsValue({
+        type: 'GRID',
+        config: '{}',
+        state: '{}',
+      });
     }
-  }, [board]);
+  }, [board, form]);
 
-  const handleSave = async () => {
+  const onFinish = async (values: any) => {
+    console.log('onFinish called with:', values);
     try {
-      const parsedConfig = JSON.parse(config);
-      const parsedState = JSON.parse(state);
+      const parsedConfig = JSON.parse(values.config);
+      const parsedState = JSON.parse(values.state);
       await upsertBoardMutation.mutateAsync({
         id: board?.id ?? null,
         contestId,
-        type,
+        type: values.type,
         config: parsedConfig,
         state: parsedState,
       });
       message.success('Board saved successfully');
       refetch();
     } catch (e: any) {
-      message.error('Save failed: ' + e.message);
+      console.error('Save failed:', e);
+      if (e instanceof SyntaxError) {
+        message.error('Invalid JSON format: ' + e.message);
+      } else {
+        message.error('Save failed: ' + e.message);
+      }
     }
   };
 
@@ -179,62 +386,64 @@ function BoardSubEdit({ contestId }: { contestId: number }) {
 
   return (
     <div style={{ padding: '16px 0' }}>
-      <Card
-        title={board ? `Edit Board for ${board.contestName}(#${contestId})` : 'Create New Board'}
-        extra={
-          <Space>
-            {board && (
-              <Button onClick={handleRecalculate} loading={recalculateMutation.isPending}>
-                Recalculate
-              </Button>
-            )}
-            <Button type="primary" onClick={handleSave} loading={upsertBoardMutation.isPending}>
-              {board ? 'Save Changes' : 'Create Board'}
-            </Button>
-          </Space>
-        }
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={onFinish}
+        onFinishFailed={(errorInfo) => {
+          console.error('Form Validation Failed:', errorInfo);
+          message.error('Please check the form inputs');
+        }}
       >
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-            Board Type
-          </label>
-          <Select
-            value={type}
-            onChange={setType}
-            style={{ width: '200px' }}
-            options={[
-              { label: 'GRID', value: 'GRID' },
-              { label: 'HONEYCOMB', value: 'HONEYCOMB' },
-              { label: 'CROSS_GRID', value: 'CROSS_GRID' },
-            ]}
-          />
-        </div>
+        <Card
+          title={board ? `Edit Board for ${board.contestName}(#${contestId})` : 'Create New Board'}
+          extra={
+            <Space>
+              {board && (
+                <Button onClick={handleRecalculate} loading={recalculateMutation.isPending}>
+                  Recalculate
+                </Button>
+              )}
+              <Button
+                type="primary"
+                onClick={() => form.submit()}
+                loading={upsertBoardMutation.isPending}
+                disabled={upsertBoardMutation.isPending}
+              >
+                {board ? 'Save Changes' : 'Create Board'}
+              </Button>
+            </Space>
+          }
+        >
+          <Form.Item label="Board Type" name="type" rules={[{ required: true }]}>
+            <Select
+              style={{ width: '200px' }}
+              options={[
+                { label: 'GRID', value: 'GRID' },
+                { label: 'HONEYCOMB', value: 'HONEYCOMB' },
+                { label: 'CROSS_GRID', value: 'CROSS_GRID' },
+              ]}
+            />
+          </Form.Item>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-              Config (JSON)
-            </label>
-            <Input.TextArea
-              value={config}
-              onChange={(e) => setConfig(e.target.value)}
-              rows={20}
-              style={{ fontFamily: 'monospace', fontSize: '12px' }}
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <Form.Item label="Config (JSON)" name="config" rules={[{ required: true }]}>
+              <Input.TextArea
+                rows={20}
+                style={{ fontFamily: 'monospace', fontSize: '12px' }}
+                placeholder="{}"
+              />
+            </Form.Item>
+            <Form.Item label="State (JSON)" name="state" rules={[{ required: true }]}>
+              <Input.TextArea
+                rows={20}
+                style={{ fontFamily: 'monospace', fontSize: '12px' }}
+                placeholder="{}"
+              />
+            </Form.Item>
           </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-              State (JSON)
-            </label>
-            <Input.TextArea
-              value={state}
-              onChange={(e) => setState(e.target.value)}
-              rows={20}
-              style={{ fontFamily: 'monospace', fontSize: '12px' }}
-            />
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </Form>
     </div>
   );
 }

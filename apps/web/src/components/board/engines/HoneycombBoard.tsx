@@ -10,17 +10,27 @@ type HoneycombBoardProps = {
   config: HoneycombBoardConfig;
   state: BoardState;
   contestId: number;
+  teamColors: Record<number, string>;
 };
 
-export const HoneycombBoard: React.FC<HoneycombBoardProps> = ({ config, state, contestId }) => {
+export const HoneycombBoard: React.FC<HoneycombBoardProps> = ({
+  config,
+  state,
+  contestId,
+  teamColors,
+}) => {
   const router = useRouter();
   const { cellIds, cellInfo, size = 50 } = config;
 
   const hexPath = 'M 30 0 L 60 17.32 L 60 51.96 L 30 69.28 L 0 51.96 L 0 17.32 Z';
 
   const getTeamColor = (ownerTeamId: number | null) => {
-    if (ownerTeamId === null) return '#1a1a1a';
-    return ownerTeamId % 2 === 0 ? '#dc2626' : '#1d4ed8'; // red-600, blue-700
+    if (ownerTeamId === null) return '#ddd';
+    return teamColors[ownerTeamId] || '#4b5563';
+  };
+
+  const getTextColor = (ownerTeamId: number | null) => {
+    return ownerTeamId === null ? '#333' : '#fff';
   };
 
   return (
@@ -60,7 +70,8 @@ export const HoneycombBoard: React.FC<HoneycombBoardProps> = ({ config, state, c
                 x="30"
                 y="30"
                 textAnchor="middle"
-                className="pointer-events-none fill-white text-[12px] font-bold"
+                className="pointer-events-none text-[12px] font-bold"
+                style={{ fill: getTextColor(cell?.ownerTeamId ?? null) }}
               >
                 {label}
               </text>
@@ -69,7 +80,8 @@ export const HoneycombBoard: React.FC<HoneycombBoardProps> = ({ config, state, c
                   x="30"
                   y="45"
                   textAnchor="middle"
-                  className="pointer-events-none fill-white/80 text-[10px] font-semibold"
+                  className="pointer-events-none text-[10px] font-semibold"
+                  style={{ fill: getTextColor(cell?.ownerTeamId ?? null), opacity: 0.8 }}
                 >
                   {cell.score}
                 </text>

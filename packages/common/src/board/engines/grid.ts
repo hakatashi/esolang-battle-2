@@ -20,11 +20,26 @@ export class GridBoardEngine extends BaseBoardEngine<GridBoardConfig> {
   createInitialState(config: GridBoardConfig): BoardState {
     const state: BoardState = {};
     const { width, height } = config;
+
+    // 全セルを空で初期化
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
         state[`${x}_${y}`] = { ownerTeamId: null, score: null, submissionId: null };
       }
     }
+
+    // startingPositions に基づいて初期拠点を設定
+    if (config.startingPositions) {
+      for (const [teamIdStr, cellIds] of Object.entries(config.startingPositions)) {
+        const teamId = parseInt(teamIdStr, 10);
+        for (const cellId of cellIds as string[]) {
+          if (state[cellId]) {
+            state[cellId] = { ownerTeamId: teamId, score: null, submissionId: null };
+          }
+        }
+      }
+    }
+
     return state;
   }
 }

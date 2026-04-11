@@ -1,13 +1,19 @@
 'use client';
 
+import { useEffect } from 'react';
+
 import { trpc } from '@/utils/trpc';
 import { EyeOutlined } from '@ant-design/icons';
 import { Edit, useForm } from '@refinedev/antd';
 import { useParsed } from '@refinedev/core';
-import { Button, Form, Input, Space, message } from 'antd';
+import { App, Button, Form, Input, Space } from 'antd';
 
 export default function BoardEdit() {
-  const { formProps, saveButtonProps } = useForm();
+  const { message } = App.useApp();
+  const [form] = Form.useForm();
+  const { formProps, saveButtonProps } = useForm({
+    form: form,
+  });
   const { id } = useParsed();
   const boardId = id ? Number(id) : undefined;
 
@@ -16,6 +22,18 @@ export default function BoardEdit() {
     { id: boardId ?? 0 },
     { enabled: !!boardId }
   );
+
+  useEffect(() => {
+    if (board) {
+      form.setFieldsValue({
+        contestId: board.contestId,
+        type: board.type,
+        config:
+          typeof board.config === 'string' ? board.config : JSON.stringify(board.config, null, 2),
+        state: typeof board.state === 'string' ? board.state : JSON.stringify(board.state, null, 2),
+      });
+    }
+  }, [board, form]);
 
   const recalculateMutation = trpc.adminRecalculateBoard.useMutation();
 
@@ -32,7 +50,12 @@ export default function BoardEdit() {
 
   return (
     <Edit
-      saveButtonProps={saveButtonProps}
+      saveButtonProps={{
+        ...saveButtonProps,
+        onClick: (e) => {
+          form.submit();
+        },
+      }}
       headerButtons={({ defaultButtons }) => (
         <Space>
           {defaultButtons}
@@ -52,17 +75,29 @@ export default function BoardEdit() {
     >
       <Form
         {...formProps}
+        form={form}
         layout="vertical"
         onFinish={(values) => {
+          console.log('BoardEdit onFinish called with:', values);
           try {
-            const config = JSON.parse(values.config);
-            const state = JSON.parse(values.state);
+            const config =
+              typeof values.config === 'string' ? JSON.parse(values.config) : values.config;
+            const state =
+              typeof values.state === 'string' ? JSON.parse(values.state) : values.state;
             formProps.onFinish?.({ ...values, config, state });
-          } catch (e) {
-            message.error('Invalid JSON');
+          } catch (e: any) {
+            console.error('JSON Parse Error:', e);
+            message.error('Invalid JSON format: ' + e.message);
           }
         }}
+        onFinishFailed={(errorInfo) => {
+          console.error('BoardEdit Validation Failed:', errorInfo);
+          message.error('Please check the form inputs');
+        }}
       >
+        <Form.Item name="contestId" hidden>
+          <Input />
+        </Form.Item>
         <Form.Item label="Contest">
           <Input value={board ? `${board.contestName}(#${board.contestId})` : ''} disabled />
         </Form.Item>
@@ -73,7 +108,9 @@ export default function BoardEdit() {
           label="Config (JSON)"
           name="config"
           rules={[{ required: true }]}
-          getValueProps={(value) => ({ value: JSON.stringify(value, null, 2) })}
+          getValueProps={(value) => ({
+            value: typeof value === 'string' ? value : JSON.stringify(value, null, 2),
+          })}
         >
           <Input.TextArea rows={15} style={{ fontFamily: 'monospace' }} />
         </Form.Item>
@@ -81,7 +118,9 @@ export default function BoardEdit() {
           label="State (JSON)"
           name="state"
           rules={[{ required: true }]}
-          getValueProps={(value) => ({ value: JSON.stringify(value, null, 2) })}
+          getValueProps={(value) => ({
+            value: typeof value === 'string' ? value : JSON.stringify(value, null, 2),
+          })}
         >
           <Input.TextArea rows={15} style={{ fontFamily: 'monospace' }} />
         </Form.Item>

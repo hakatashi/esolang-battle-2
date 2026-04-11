@@ -39,13 +39,23 @@ export const trpcDataProvider = (): DataProvider => ({
         }
         break;
       case 'testcases':
-        const problemId = getFilterValue('problemId');
-        data = await client.adminGetTestCases.query({
-          problemId: problemId ? Number(problemId) : undefined,
-        });
+        {
+          const problemId = getFilterValue('problemId');
+          data = await client.adminGetTestCases.query({
+            problemId: problemId ? Number(problemId) : undefined,
+          });
+        }
         break;
       case 'boards':
         data = await client.adminGetBoards.query();
+        break;
+      case 'submissions':
+        {
+          const contestId = getFilterValue('contestId');
+          data = await client.getSubmissions.query({
+            contestId: contestId ? Number(contestId) : undefined,
+          });
+        }
         break;
       default:
         throw new Error(`Unknown resource: ${resource}`);
@@ -53,7 +63,6 @@ export const trpcDataProvider = (): DataProvider => ({
 
     // 2. フィルタリング処理
     if (filters && filters.length > 0) {
-      console.log(filters);
       data = data.filter((item) => {
         return filters.every((filter: any) => {
           if (filter.field === 'contestId' || filter.field === 'problemId') return true;
@@ -220,6 +229,9 @@ export const trpcDataProvider = (): DataProvider => ({
       case 'testcases':
         data = await client.adminDeleteTestCase.mutate({ id: Number(id) });
         break;
+      case 'submissions':
+        data = await client.adminDeleteSubmission.mutate({ id: Number(id) });
+        break;
       default:
         throw new Error(`Delete not supported for resource: ${resource}`);
     }
@@ -246,6 +258,9 @@ export const trpcDataProvider = (): DataProvider => ({
         break;
       case 'testcases':
         data = await client.adminDeleteTestCases.mutate({ ids: numericIds });
+        break;
+      case 'submissions':
+        data = await client.adminDeleteSubmissions.mutate({ ids: numericIds });
         break;
       default:
         throw new Error(`DeleteMany not supported for resource: ${resource}`);

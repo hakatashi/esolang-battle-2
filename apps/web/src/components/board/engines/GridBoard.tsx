@@ -10,9 +10,10 @@ type GridBoardProps = {
   config: GridBoardConfig;
   state: BoardState;
   contestId: number;
+  teamColors: Record<number, string>;
 };
 
-export const GridBoard: React.FC<GridBoardProps> = ({ config, state, contestId }) => {
+export const GridBoard: React.FC<GridBoardProps> = ({ config, state, contestId, teamColors }) => {
   const router = useRouter();
   const { width, height, cellInfo } = config;
 
@@ -22,9 +23,10 @@ export const GridBoard: React.FC<GridBoardProps> = ({ config, state, contestId }
     }
   };
 
-  const getCellBgColor = (ownerTeamId: number | null) => {
-    if (ownerTeamId === null) return 'bg-gray-800';
-    return ownerTeamId % 2 === 0 ? 'bg-red-600' : 'bg-blue-700';
+  const getCellStyle = (ownerTeamId: number | null): React.CSSProperties => {
+    if (ownerTeamId === null) return { backgroundColor: '#ddd', color: '#333' };
+    const color = teamColors[ownerTeamId] || '#4b5563';
+    return { backgroundColor: color, color: '#fff' };
   };
 
   return (
@@ -52,10 +54,11 @@ export const GridBoard: React.FC<GridBoardProps> = ({ config, state, contestId }
             key={cellId}
             role={info.languageId !== undefined ? 'button' : undefined}
             tabIndex={info.languageId !== undefined ? 0 : undefined}
-            className={`flex items-center justify-center rounded-md p-2 transition-all hover:-translate-y-0.5 ${getCellBgColor(cell?.ownerTeamId ?? null)} ${info.languageId !== undefined ? 'cursor-pointer' : ''}`}
+            className={`flex items-center justify-center rounded-md p-2 transition-all hover:-translate-y-0.5 ${info.languageId !== undefined ? 'cursor-pointer' : ''}`}
+            style={getCellStyle(cell?.ownerTeamId ?? null)}
             onClick={() => handleCellClick(info.languageId)}
           >
-            <div className="flex flex-col items-center justify-center text-center text-white">
+            <div className="flex flex-col items-center justify-center text-center">
               <div className="text-sm font-extrabold leading-tight">{info.label}</div>
               {cell?.score !== null && (
                 <div className="mt-0.5 text-xs font-semibold opacity-90">{cell.score}</div>

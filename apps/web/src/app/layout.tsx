@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 
 import AuthProvider from '@/components/AuthProvider';
 import TRPCProvider from '@/components/TRPCProvider';
+import { App as AntdApp } from 'antd';
 
 import './globals.css';
 
@@ -18,7 +19,9 @@ export default function RootLayout({ children }: { children: any }) {
     <html lang="ja">
       <body className={inter.className}>
         <AuthProvider>
-          <TRPCProvider>{children}</TRPCProvider>
+          <TRPCProvider>
+            <AntdApp>{children}</AntdApp>
+          </TRPCProvider>
         </AuthProvider>
       </body>
     </html>

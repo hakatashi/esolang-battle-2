@@ -9,6 +9,7 @@ import { trpc } from '@/utils/trpc';
 import {
   AppstoreOutlined,
   CheckSquareOutlined,
+  CloudUploadOutlined,
   CodeOutlined,
   DatabaseOutlined,
   FileTextOutlined,
@@ -63,6 +64,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             notificationProvider={useNotificationProvider}
             routerProvider={routerProvider}
             resources={[
+              // --- マスターデータ (コンテスト非依存) ---
               {
                 name: 'users',
                 list: '/admin/users',
@@ -76,6 +78,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 edit: '/admin/languages/edit/:id',
                 meta: { label: 'Languages', icon: <CodeOutlined /> },
               },
+
+              // --- 大会管理 ---
               {
                 name: 'contests',
                 list: '/admin/contests',
@@ -83,6 +87,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 edit: '/admin/contests/edit/:id',
                 meta: { label: 'Contests', icon: <TrophyOutlined /> },
               },
+
+              // --- 横断管理 (全コンテストのデータを一括表示) ---
               {
                 name: 'all_contest_data',
                 meta: { label: 'All Contest Data', icon: <DatabaseOutlined /> },
@@ -107,6 +113,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 create: '/admin/boards/create',
                 edit: '/admin/boards/edit/:id',
                 meta: { label: 'Boards', icon: <AppstoreOutlined />, parent: 'all_contest_data' },
+              },
+              {
+                name: 'submissions',
+                list: '/admin/submissions',
+                meta: {
+                  label: 'Submissions',
+                  icon: <CloudUploadOutlined />,
+                  parent: 'all_contest_data',
+                },
               },
               {
                 name: 'testcases',

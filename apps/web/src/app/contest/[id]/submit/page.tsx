@@ -5,6 +5,7 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 
 import { trpc } from '@/utils/trpc';
+import { Button, Select } from 'antd';
 
 function SubmitForm() {
   const params = useParams();
@@ -74,35 +75,47 @@ function SubmitForm() {
           <label htmlFor="problem-select" className="mb-2 block text-sm font-medium text-gray-700">
             問題
           </label>
-          <select
-            id="problem-select"
-            value={selectedProblemId}
-            onChange={(e) => setSelectedProblemId(e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-          >
-            {problems?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.title} (ID {p.id})
-              </option>
-            ))}
-          </select>
+          <div className="max-w-md">
+            <Select
+              id="problem-select"
+              showSearch
+              className="w-full"
+              placeholder="問題を選択してください"
+              optionFilterProp="label"
+              value={selectedProblemId || undefined}
+              onChange={(value) => setSelectedProblemId(value)}
+              options={problems?.map((p) => ({
+                value: String(p.id),
+                label: `${p.title} (ID ${p.id})`,
+              }))}
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+            />
+          </div>
         </div>
         <div>
           <label htmlFor="language-select" className="mb-2 block text-sm font-medium text-gray-700">
             言語
           </label>
-          <select
-            id="language-select"
-            value={selectedLanguageId}
-            onChange={(e) => setSelectedLanguageId(e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-          >
-            {languages?.map((lang) => (
-              <option key={lang.id} value={lang.id}>
-                {lang.name}
-              </option>
-            ))}
-          </select>
+          <div className="max-w-md">
+            <Select
+              id="language-select"
+              showSearch
+              className="w-full"
+              placeholder="言語を選択してください"
+              optionFilterProp="label"
+              value={selectedLanguageId || undefined}
+              onChange={(value) => setSelectedLanguageId(value)}
+              options={languages?.map((lang) => ({
+                value: String(lang.id),
+                label: lang.name,
+              }))}
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+            />
+          </div>
         </div>
       </div>
 
@@ -124,13 +137,16 @@ function SubmitForm() {
       </div>
 
       <div className="flex items-center gap-4">
-        <button
-          type="submit"
-          disabled={submitMutation.isPending || !code.trim()}
-          className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-6 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        <Button
+          type="primary"
+          htmlType="submit"
+          loading={submitMutation.isPending}
+          disabled={!code.trim() || !selectedLanguageId || !selectedProblemId}
+          size="large"
+          className="min-w-[120px]"
         >
           {submitMutation.isPending ? '提出中...' : '提出する'}
-        </button>
+        </Button>
       </div>
 
       {submitMessage && (

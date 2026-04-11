@@ -27,6 +27,18 @@ export class HoneycombBoardEngine extends BaseBoardEngine<HoneycombBoardConfig> 
     for (const cellId of cellIds) {
       state[cellId] = { ownerTeamId: null, score: null, submissionId: null };
     }
+
+    // Apply starting positions
+    if (config.startingPositions) {
+      for (const [teamIdStr, ids] of Object.entries(config.startingPositions)) {
+        const teamId = parseInt(teamIdStr, 10);
+        for (const cellId of ids as string[]) {
+          if (state[cellId]) {
+            state[cellId] = { ownerTeamId: teamId, score: null, submissionId: null };
+          }
+        }
+      }
+    }
     return state;
   }
 }

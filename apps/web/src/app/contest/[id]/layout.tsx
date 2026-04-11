@@ -13,6 +13,7 @@ export default function ContestLayout({ children }: { children: React.ReactNode 
   const tabs = [
     { id: 'board', label: '盤面', path: `/contest/${contestId}/board` },
     { id: 'problem', label: '問題', path: `/contest/${contestId}/problem` },
+    { id: 'standings', label: '順位表', path: `/contest/${contestId}/standings` },
     { id: 'submit', label: '新しい提出', path: `/contest/${contestId}/submit` },
     { id: 'submissions', label: '提出一覧', path: `/contest/${contestId}/submissions` },
     { id: 'code_test', label: 'コードテスト', path: `/contest/${contestId}/code_test` },

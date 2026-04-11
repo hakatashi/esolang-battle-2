@@ -17,7 +17,19 @@ export default function BoardCreate() {
       form.setFieldsValue({
         contestId: Number(contestId),
         type: 'GRID',
-        config: JSON.stringify({ width: 5, height: 5, mapping: {}, cellInfo: {} }, null, 2),
+        config: JSON.stringify(
+          {
+            width: 5,
+            height: 5,
+            mapping: {},
+            cellInfo: {},
+            startingPositions: {
+              '1': ['0_0'],
+            },
+          },
+          null,
+          2
+        ),
         state: JSON.stringify({}, null, 2),
       });
     }

@@ -3,16 +3,24 @@ import { PrismaClient } from '../../prisma/generated/client/index';
 export type GetSubmissionsFilter = {
   userId?: number;
   teamId?: number;
-  problemId?: number;
-  languageId?: number;
+  problemId?: number | number[];
+  languageId?: number | number[];
   contestId?: number;
+  orderBy?: 'id' | 'submittedAt' | 'codeLength' | 'score';
+  order?: 'asc' | 'desc';
 };
 
 export async function findSubmissions(prisma: PrismaClient, filter: GetSubmissionsFilter = {}) {
   const where: any = {};
   if (filter.userId) where.userId = filter.userId;
-  if (filter.problemId) where.problemId = filter.problemId;
-  if (filter.languageId) where.languageId = filter.languageId;
+  if (filter.problemId) {
+    where.problemId = Array.isArray(filter.problemId) ? { in: filter.problemId } : filter.problemId;
+  }
+  if (filter.languageId) {
+    where.languageId = Array.isArray(filter.languageId)
+      ? { in: filter.languageId }
+      : filter.languageId;
+  }
   if (filter.contestId) where.problem = { contestId: filter.contestId };
   if (filter.teamId) {
     where.user = {
@@ -22,9 +30,16 @@ export async function findSubmissions(prisma: PrismaClient, filter: GetSubmissio
     };
   }
 
+  const orderBy: any = {};
+  if (filter.orderBy) {
+    orderBy[filter.orderBy] = filter.order ?? 'desc';
+  } else {
+    orderBy.submittedAt = 'desc';
+  }
+
   return await prisma.submission.findMany({
     where,
-    orderBy: { submittedAt: 'desc' },
+    orderBy,
     include: {
       user: {
         include: {
