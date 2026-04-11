@@ -1,7 +1,7 @@
 import Docker from 'dockerode';
 import fs from 'fs/promises';
-import path from 'path';
 import os from 'os';
+import path from 'path';
 
 const docker = new Docker();
 
@@ -22,204 +22,138 @@ const MEMORY_LIMIT = 512 * 1024 * 1024; // 512MB
 const BATCH_MEMORY_LIMIT = 1024 * 1024 * 1024; // 1GB
 
 /**
- * Docker ログ形式 (8バイトヘッダ) を考慮してデマルチプレクスする
+ * コンテナの共通セキュリティ設定
  */
-function demuxDockerLogs(buffer: Buffer): { stdout: string; stderr: string } {
-  let stdout = '';
-  let stderr = '';
-  let offset = 0;
-  while (offset < buffer.length) {
-    if (offset + 8 > buffer.length) break;
-    const type = buffer.readUInt8(offset);
-    const size = buffer.readUInt32BE(offset + 4);
-    offset += 8;
-
-    const end = Math.min(offset + size, buffer.length);
-    const chunk = buffer.toString('utf8', offset, end);
-
-    if (type === 1) stdout += chunk;
-    else if (type === 2) stderr += chunk;
-
-    offset += size;
-  }
-  return { stdout, stderr };
-}
+const getHostConfig = (memoryLimit: number): Docker.HostConfig => ({
+  Memory: memoryLimit,
+  MemorySwap: memoryLimit,
+  Ulimits: [
+    { Name: 'nofile', Soft: 65535, Hard: 65535 },
+    { Name: 'nproc', Soft: 4096, Hard: 8192 },
+  ],
+  NetworkMode: 'none',
+});
 
 /**
- * 単一のコンテナでコードを実行する
+ * 実行エンジンのコア: コンテナ内で複数の入力を処理する
  */
-export async function runCode(
-  image: string,
-  code: string,
-  timeoutMs: number = DEFAULT_TIMEOUT_MS
-): Promise<DockerResult> {
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'esolang-test-'));
-  const imageSegments = image.split('/');
-  const cmd = imageSegments[imageSegments.length - 1];
-  if (!cmd) throw new Error(`Invalid image name: ${image}`);
-
-  try {
-    const codeFileName = 'code';
-    const codePath = path.join(tmpDir, codeFileName);
-    await fs.writeFile(codePath, code, 'utf8');
-
-    const container = await docker.createContainer({
-      Image: image,
-      Cmd: [cmd, `/volume/${codeFileName}`],
-      HostConfig: {
-        Binds: [`${tmpDir}:/volume:ro`],
-        Memory: MEMORY_LIMIT,
-        MemorySwap: MEMORY_LIMIT,
-        Ulimits: [
-          {
-            Name: 'nofile',
-            Soft: 65535,
-            Hard: 65535,
-          },
-          {
-            Name: 'nproc',
-            Soft: 4096,
-            Hard: 8192,
-          },
-        ],
-        NetworkMode: 'none',
-      },
-    });
-
-    const start = Date.now();
-    await container.start();
-
-    const waitPromise = container.wait();
-    const timeoutPromise = new Promise((resolve) =>
-      setTimeout(() => resolve({ timeout: true }), timeoutMs)
-    );
-
-    const result: any = await Promise.race([waitPromise, timeoutPromise]);
-    const end = Date.now();
-
-    let exitCode = -1;
-    let isTimeout = false;
-
-    if (result && result.timeout) {
-      isTimeout = true;
-      await container.kill().catch(() => {});
-      exitCode = 137; // SIGKILL
-    } else {
-      exitCode = result.StatusCode;
-    }
-
-    const logBuffer = (await container.logs({ stdout: true, stderr: true })) as Buffer;
-    const { stdout, stderr } = demuxDockerLogs(logBuffer);
-
-    await container.remove({ force: true });
-
-    return {
-      stdout,
-      stderr: isTimeout ? `${stderr}\nTime Limit Exceeded` : stderr,
-      exitCode,
-      durationMs: end - start,
-    };
-  } finally {
-    await fs.rm(tmpDir, { recursive: true, force: true });
-  }
-}
-
-/**
- * 単一のコンテナで全テストケースを一括実行する
- */
-export async function runAllTestCasesInSingleContainer(
+async function runExecutionBatch(
   image: string,
   code: string,
   testCases: TestCaseWithIO[],
-  timeoutMs: number = DEFAULT_TIMEOUT_MS * 2 // バッチ実行なので長めに設定
+  timeoutMs: number,
+  memoryLimit: number
 ): Promise<Record<number, DockerResult>> {
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'esolang-worker-'));
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'esolang-exec-'));
   const imageSegments = image.split('/');
   const cmd = imageSegments[imageSegments.length - 1];
   if (!cmd) throw new Error(`Invalid image name: ${image}`);
 
   try {
-    const codeFileName = 'code.bf';
-    const codePath = path.join(tmpDir, codeFileName);
-    await fs.writeFile(codePath, code, 'utf8');
+    // 1. 準備: コードと各テストケースの入力を書き出す
+    const codeFileName = 'solution.src';
+    await fs.writeFile(path.join(tmpDir, codeFileName), code, 'utf8');
 
     const scriptLines: string[] = [];
     for (const tc of testCases) {
       const base = String(tc.id);
-      const inputPath = path.join(tmpDir, `INPUT_${base}`);
-      await fs.writeFile(inputPath, tc.input, 'utf8');
-
+      await fs.writeFile(path.join(tmpDir, `IN_${base}`), tc.input, 'utf8');
+      // 各ケースの実行コマンドを構築
       scriptLines.push(
-        `${cmd} /volume/${codeFileName} < /volume/INPUT_${base} > /volume/OUTPUT_${base} 2>/volume/ERR_${base}; echo $? > /volume/EXIT_${base}`
+        `${cmd} /volume/${codeFileName} < /volume/IN_${base} > /volume/OUT_${base} 2>/volume/ERR_${base}; echo $? > /volume/EXIT_${base}`
       );
     }
 
-    const scriptPath = path.join(tmpDir, 'run_all.sh');
-    await fs.writeFile(scriptPath, scriptLines.join('\n'), { mode: 0o755 });
+    // 実行制御用シェルスクリプト
+    await fs.writeFile(path.join(tmpDir, 'runner.sh'), scriptLines.join('\n'), { mode: 0o755 });
 
+    // 2. 実行: コンテナの作成と開始
     const container = await docker.createContainer({
       Image: image,
-      Cmd: ['sh', '/volume/run_all.sh'],
+      Cmd: ['sh', '/volume/runner.sh'],
       HostConfig: {
+        ...getHostConfig(memoryLimit),
         Binds: [`${tmpDir}:/volume:rw`],
-        Memory: BATCH_MEMORY_LIMIT,
-        MemorySwap: BATCH_MEMORY_LIMIT,
-        Ulimits: [
-          {
-            Name: 'nofile',
-            Soft: 65535,
-            Hard: 65535,
-          },
-          {
-            Name: 'nproc',
-            Soft: 4096,
-            Hard: 8192,
-          },
-        ],
-        NetworkMode: 'none',
       },
     });
 
     const start = Date.now();
     await container.start();
 
+    // 3. 監視: 終了またはタイムアウトを待つ
     const waitPromise = container.wait();
     const timeoutPromise = new Promise((resolve) =>
       setTimeout(() => resolve({ timeout: true }), timeoutMs)
     );
 
-    const result: any = await Promise.race([waitPromise, timeoutPromise]);
+    const raceResult: any = await Promise.race([waitPromise, timeoutPromise]);
     const end = Date.now();
+    const isTimeout = !!(raceResult && raceResult.timeout);
 
-    if (result && result.timeout) {
+    if (isTimeout) {
       await container.kill().catch(() => {});
     }
 
-    await container.remove({ force: true });
+    // 4. 回収: コンテナ削除と結果ファイルの読み込み
+    await container.remove({ force: true }).catch(() => {});
 
     const results: Record<number, DockerResult> = {};
     for (const tc of testCases) {
       const base = String(tc.id);
-      const outPath = path.join(tmpDir, `OUTPUT_${base}`);
-      const errPath = path.join(tmpDir, `ERR_${base}`);
-      const exitPath = path.join(tmpDir, `EXIT_${base}`);
-
-      const [stdoutBuf, stderrBuf, exitText] = await Promise.all([
-        fs.readFile(outPath).catch(() => Buffer.alloc(0)),
-        fs.readFile(errPath).catch(() => Buffer.alloc(0)),
-        fs.readFile(exitPath, 'utf8').catch(() => '-1'),
+      const [stdout, stderr, exitText] = await Promise.all([
+        fs.readFile(path.join(tmpDir, `OUT_${base}`), 'utf8').catch(() => ''),
+        fs.readFile(path.join(tmpDir, `ERR_${base}`), 'utf8').catch(() => ''),
+        fs.readFile(path.join(tmpDir, `EXIT_${base}`), 'utf8').catch(() => '-1'),
       ]);
 
-      const exitCodeValue = parseInt(String(exitText).trim(), 10);
+      let exitCode = parseInt(exitText.trim(), 10);
+      let finalStderr = stderr;
+
+      if (isTimeout && exitCode === -1) {
+        exitCode = 137;
+        finalStderr += '\nTime Limit Exceeded';
+      }
+
       results[tc.id] = {
-        stdout: stdoutBuf.toString('utf8'),
-        stderr: stderrBuf.toString('utf8'),
-        exitCode: Number.isNaN(exitCodeValue) ? -1 : exitCodeValue,
+        stdout,
+        stderr: finalStderr,
+        exitCode: Number.isNaN(exitCode) ? -1 : exitCode,
         durationMs: end - start,
       };
     }
     return results;
   } finally {
-    await fs.rm(tmpDir, { recursive: true, force: true });
+    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
   }
+}
+
+/**
+ * 単一のコード実行 (コードテスト用)
+ */
+export async function runCode(
+  image: string,
+  code: string,
+  stdin = '',
+  timeoutMs: number = DEFAULT_TIMEOUT_MS
+): Promise<DockerResult> {
+  const results = await runExecutionBatch(
+    image,
+    code,
+    [{ id: 0, input: stdin }],
+    timeoutMs,
+    MEMORY_LIMIT
+  );
+  return results[0];
+}
+
+/**
+ * 全テストケースの一括実行 (提出用)
+ */
+export async function runAllTestCasesInSingleContainer(
+  image: string,
+  code: string,
+  testCases: TestCaseWithIO[],
+  timeoutMs: number = DEFAULT_TIMEOUT_MS * 2
+): Promise<Record<number, DockerResult>> {
+  return await runExecutionBatch(image, code, testCases, timeoutMs, BATCH_MEMORY_LIMIT);
 }

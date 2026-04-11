@@ -14,6 +14,7 @@ export default function CodeTestPage() {
 
   const [selectedLanguageId, setSelectedLanguageId] = useState<string>('');
   const [testCodeText, setTestCodeText] = useState('');
+  const [stdinText, setStdinText] = useState('');
 
   useEffect(() => {
     if (languages && languages.length > 0 && !selectedLanguageId) {
@@ -28,6 +29,7 @@ export default function CodeTestPage() {
       await testCodeMutation.mutateAsync({
         code: testCodeText,
         languageId,
+        stdin: stdinText,
       });
     } catch (err) {
       console.error(err);
@@ -73,6 +75,20 @@ export default function CodeTestPage() {
             onChange={(e) => setTestCodeText(e.target.value)}
             className="block w-full rounded-md border border-gray-300 px-3 py-2 font-mono shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
             placeholder="テストしたいコードをここに入力..."
+          />
+        </div>
+
+        <div>
+          <label htmlFor="stdin-area" className="mb-2 block text-sm font-medium text-gray-700">
+            標準入力 (stdin)
+          </label>
+          <textarea
+            id="stdin-area"
+            rows={4}
+            value={stdinText}
+            onChange={(e) => setStdinText(e.target.value)}
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 font-mono shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+            placeholder="標準入力として与えたい文字列を入力..."
           />
         </div>
 

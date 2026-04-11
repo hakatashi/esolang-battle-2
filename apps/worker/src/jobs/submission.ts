@@ -31,7 +31,6 @@ export async function processSubmission(submissionId: number) {
     }
     let status: 'AC' | 'WA' | 'RE';
 
-
     if (result.exitCode === 0) {
       const resultStdOut = result.stdout.trim().split(/\s+/);
       const expectedStdOut = testcase.output.trim().split(/\s+/);

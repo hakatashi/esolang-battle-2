@@ -8,7 +8,7 @@ import { TestJobData, processTest } from './jobs/test';
 // --- Types ---
 type SubmissionJobData = {
   submissionId: number;
-}
+};
 
 // --- Infrastructure ---
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
