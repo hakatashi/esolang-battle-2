@@ -352,6 +352,7 @@ export default function ProblemEdit() {
 }
 
 function TestCasesSubList({ problemId }: { problemId: number }) {
+  const router = useRouter();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   const { tableProps } = useTable({
@@ -365,6 +366,12 @@ function TestCasesSubList({ problemId }: { problemId: number }) {
   return (
     <div style={{ padding: '16px 0' }}>
       <Space style={{ marginBottom: '16px' }}>
+        <Button
+          type="primary"
+          onClick={() => router.push(`/admin/testcases/create?problemId=${problemId}`)}
+        >
+          Add Test Case
+        </Button>
         <BulkDeleteButton
           resource="testcases"
           selectedKeys={selectedRowKeys}
