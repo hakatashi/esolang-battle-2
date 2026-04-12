@@ -12,6 +12,7 @@ export async function findProblemById(prisma: PrismaClient, id: number) {
     where: { id },
     include: {
       acceptedLanguages: true,
+      testCases: true,
     },
   });
 }

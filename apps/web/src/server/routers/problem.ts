@@ -12,8 +12,16 @@ export const problemRouter = router({
       title: problem.title,
       problemStatement: problem.problemStatement,
       contestId: problem.contestId,
+      testCases: problem.testCases
+        .filter((tc) => tc.isSample)
+        .map((tc) => ({
+          id: tc.id,
+          input: tc.input,
+          output: tc.output,
+        })),
       acceptedLanguages: problem.acceptedLanguages.map((lang) => ({
         id: lang.id,
+        name: lang.name,
         description: lang.description,
         dockerImageId: lang.dockerImageId,
       })),

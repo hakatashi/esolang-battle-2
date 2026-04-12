@@ -98,15 +98,16 @@ export default function CodeTestPage() {
               showSearch
               className="w-full"
               placeholder="言語を検索・選択"
-              optionFilterProp="label"
-              value={selectedLanguageId}
+              optionFilterProp="name"
+              fieldNames={{ label: 'name', value: 'id' }}
+              value={selectedLanguageId || undefined}
               onChange={(value) => setSelectedLanguageId(value)}
               options={languages.map((lang) => ({
-                value: String(lang.id),
-                label: lang.name,
+                id: String(lang.id),
+                name: lang.name,
               }))}
               filterOption={(input, option) =>
-                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                (option?.name ?? '').toLowerCase().includes(input.toLowerCase())
               }
             />
           </div>
@@ -125,6 +126,10 @@ export default function CodeTestPage() {
             className="block w-full rounded-md border border-gray-300 px-3 py-2 font-mono shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
             placeholder="テストしたいコードをここに入力..."
           />
+          <div className="mt-1 flex justify-end gap-4 text-xs text-gray-500">
+            <span>文字数: {testCodeText.length} chars</span>
+            <span>バイト数: {new TextEncoder().encode(testCodeText).length} bytes</span>
+          </div>
         </div>
 
         <div>

@@ -1,15 +1,42 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 import { trpc } from '@/utils/trpc';
+import { CopyOutlined } from '@ant-design/icons';
+import { Button, Select, Tooltip, message } from 'antd';
+
+// コピーボタン用のサブコンポーネント
+const CopyButton = ({ text, label }: { text: string; label: string }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Tooltip title={copied ? 'Copied!' : `Copy ${label}`} open={copied ? true : undefined}>
+      <Button
+        type="text"
+        size="small"
+        icon={<CopyOutlined className={copied ? 'text-green-500' : 'text-gray-400'} />}
+        onClick={handleCopy}
+      />
+    </Tooltip>
+  );
+};
 
 export default function ProblemDetailPage() {
   const params = useParams();
+  const contestId = Number(params.id);
   const problemId = Number(params.problemId);
+  const router = useRouter();
 
   const {
     data: problem,
@@ -18,14 +45,51 @@ export default function ProblemDetailPage() {
   } = trpc.getProblem.useQuery({ problemId }, { enabled: !!problemId });
 
   const { data: me } = trpc.me.useQuery();
+  const submitMutation = trpc.submitCode.useMutation();
+
+  const [code, setCode] = useState('');
+  const [selectedLanguageId, setSelectedLanguageId] = useState<string>('');
+
+  useEffect(() => {
+    if (problem?.acceptedLanguages && problem.acceptedLanguages.length > 0 && !selectedLanguageId) {
+      setSelectedLanguageId(String(problem.acceptedLanguages[0].id));
+    }
+  }, [problem, selectedLanguageId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLanguageId) {
+      message.error('言語を選択してください');
+      return;
+    }
+    if (!code.trim()) {
+      message.error('コードを入力してください');
+      return;
+    }
+
+    try {
+      await submitMutation.mutateAsync({
+        problemId,
+        languageId: Number(selectedLanguageId),
+        code,
+      });
+      message.success('提出が完了しました');
+      router.push(`/contest/${contestId}/submissions`);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      message.error('提出に失敗しました: ' + errorMsg);
+    }
+  };
 
   if (isLoading) return <div>Loading problem details...</div>;
   if (error) return <div className="text-red-600">Error: {error.message}</div>;
   if (!problem) return <div>問題が見つかりませんでした。</div>;
 
+  const sampleTestCases = problem.testCases || [];
+
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-2 max-w-4xl duration-300">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="animate-in fade-in slide-in-from-bottom-2 max-w-4xl space-y-8 pb-20 duration-300">
+      <div className="flex items-center justify-between">
         <h2 className="text-3xl font-extrabold text-gray-900">
           {problem.title}{' '}
           <span className="ml-2 text-xl font-normal text-gray-400"># {problem.id}</span>
@@ -39,41 +103,117 @@ export default function ProblemDetailPage() {
               Edit (Admin)
             </Link>
           )}
-          <Link
-            href={`/contest/${problem.contestId}/submit?problemId=${problem.id}`}
-            className="rounded-md bg-blue-600 px-6 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700"
-          >
-            Submit Code
-          </Link>
         </div>
       </div>
 
-      <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-        <h3 className="font-uppercase mb-4 text-sm font-bold tracking-wider text-gray-400">
-          PROBLEM STATEMENT
-        </h3>
+      <div className="bg-white py-8">
+        <h3 className="text-lg font-bold text-gray-900">問題文</h3>
         <div className="prose prose-blue max-w-none">
-          <pre className="whitespace-pre-wrap font-sans text-lg leading-relaxed text-gray-800">
+          <div className="whitespace-pre-wrap font-sans text-lg leading-relaxed text-gray-800">
             {problem.problemStatement}
-          </pre>
+          </div>
         </div>
       </div>
 
-      {problem.acceptedLanguages && problem.acceptedLanguages.length > 0 && (
-        <div className="mb-8 rounded-xl border border-gray-100 bg-gray-50 p-6">
-          <h3 className="mb-4 text-lg font-bold text-gray-900">Accepted Languages</h3>
-          <div className="flex flex-wrap gap-2">
-            {problem.acceptedLanguages.map((lang) => (
-              <span
-                key={lang.id}
-                className="rounded-full border border-gray-200 bg-white px-3 py-1 text-sm font-medium text-gray-600 shadow-sm"
+      {sampleTestCases.length > 0 && (
+        <div className="space-y-4 border-t pt-8">
+          <h3 className="text-lg font-bold text-gray-900">Sample Test Cases</h3>
+          <div className="grid gap-4 md:grid-cols-2">
+            {sampleTestCases.map((tc, index) => (
+              <div
+                key={tc.id}
+                className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
               >
-                {lang.description}
-              </span>
+                <div className="border-b border-gray-200 bg-gray-50 px-4 py-2 text-sm font-bold text-gray-600">
+                  Sample {index + 1}
+                </div>
+                <div className="space-y-3 p-4">
+                  <div>
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase text-gray-400">Input</span>
+                      <CopyButton text={tc.input || ''} label="Input" />
+                    </div>
+                    <pre className="whitespace-pre-wrap rounded border border-gray-100 bg-gray-50 p-2 font-mono text-xs">
+                      {tc.input || <span className="italic opacity-50">(empty)</span>}
+                    </pre>
+                  </div>
+                  <div>
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase text-gray-400">Output</span>
+                      <CopyButton text={tc.output || ''} label="Output" />
+                    </div>
+                    <pre className="whitespace-pre-wrap rounded border border-gray-100 bg-gray-50 p-2 font-mono text-xs">
+                      {tc.output || <span className="italic opacity-50">(empty)</span>}
+                    </pre>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </div>
       )}
+
+      <div className="border-t pt-8">
+        <h3 className="mb-6 text-xl font-bold text-gray-900">Submit Solution</h3>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="max-w-xs">
+            <label
+              htmlFor="language-select"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              言語選択
+            </label>
+            <Select
+              id="language-select"
+              showSearch
+              className="w-full"
+              value={selectedLanguageId || undefined}
+              onChange={setSelectedLanguageId}
+              placeholder="言語を選択"
+              optionFilterProp="name"
+              fieldNames={{ label: 'name', value: 'id' }}
+              options={problem.acceptedLanguages.map((lang) => ({
+                id: String(lang.id),
+                name: lang.name,
+              }))}
+              filterOption={(input, option) =>
+                (option?.name ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+            />
+          </div>
+
+          <div>
+            <label htmlFor="code-textarea" className="mb-2 block text-sm font-medium text-gray-700">
+              ソースコード
+            </label>
+            <textarea
+              id="code-textarea"
+              rows={12}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 font-mono text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+              placeholder="ここにコードを入力..."
+            />
+            <div className="mt-2 flex justify-end gap-4 text-xs text-gray-500">
+              <span>文字数: {code.length} chars</span>
+              <span>バイト数: {new TextEncoder().encode(code).length} bytes</span>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              type="primary"
+              htmlType="submit"
+              size="large"
+              loading={submitMutation.isPending}
+              disabled={!selectedLanguageId}
+              className="px-12 font-bold"
+            >
+              提出する
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

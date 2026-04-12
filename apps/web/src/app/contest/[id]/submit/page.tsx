@@ -131,9 +131,10 @@ function SubmitForm() {
           className="block w-full rounded-md border border-gray-300 px-3 py-2 font-mono shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
           placeholder="コードをここに貼り付けてください..."
         />
-        <p className="mt-2 text-sm text-gray-500">
-          現在の文字数: <span className="font-bold">{code.length}</span> 文字
-        </p>
+        <div className="mt-1 flex justify-end gap-4 text-xs text-gray-500">
+          <span>文字数: {code.length} chars</span>
+          <span>バイト数: {new TextEncoder().encode(code).length} bytes</span>
+        </div>
       </div>
 
       <div className="flex items-center gap-4">
