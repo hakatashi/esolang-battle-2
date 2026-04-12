@@ -125,7 +125,7 @@ export default function SubmissionDetailPage() {
             </Button>
           </div>
         ) : (
-          <pre className="overflow-x-auto rounded-lg bg-gray-900 p-6 font-mono text-sm leading-relaxed text-gray-100 shadow-inner">
+          <pre className="max-h-[500px] overflow-x-auto overflow-y-auto rounded-lg bg-gray-900 p-6 font-mono text-sm leading-relaxed text-gray-100 shadow-inner">
             {submission.codeText}
           </pre>
         )}

@@ -190,7 +190,7 @@ export default function SubmissionsPage() {
       },
     },
     {
-      title: '長',
+      title: 'バイト数',
       dataIndex: 'codeLength',
       key: 'codeLength',
       sorter: true,
