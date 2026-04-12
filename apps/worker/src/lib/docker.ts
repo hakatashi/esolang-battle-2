@@ -45,9 +45,6 @@ async function runExecutionBatch(
   memoryLimit: number
 ): Promise<Record<number, DockerResult>> {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'esolang-exec-'));
-  const imageSegments = image.split('/');
-  const cmd = imageSegments[imageSegments.length - 1];
-  if (!cmd) throw new Error(`Invalid image name: ${image}`);
 
   try {
     // 1. 準備: コードと各テストケースの入力を書き出す
@@ -58,9 +55,11 @@ async function runExecutionBatch(
     for (const tc of testCases) {
       const base = String(tc.id);
       await fs.writeFile(path.join(tmpDir, `IN_${base}`), tc.input, 'utf8');
-      // 各ケースの実行コマンドを構築
+
+      // script /volume/solution.src < /volume/INPUT 形式
+      // ファイル名は固定なので直接埋め込み
       scriptLines.push(
-        `${cmd} /volume/${codeFileName} < /volume/IN_${base} > /volume/OUT_${base} 2>/volume/ERR_${base}; echo $? > /volume/EXIT_${base}`
+        `script /volume/${codeFileName} < /volume/IN_${base} > /volume/OUT_${base} 2>/volume/ERR_${base}; echo $? > /volume/EXIT_${base}`
       );
     }
 
@@ -173,16 +172,14 @@ export async function runJudgeScript(
   timeoutMs: number = DEFAULT_TIMEOUT_MS
 ): Promise<any> {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'esolang-judge-'));
-  const imageSegments = image.split('/');
-  const cmd = imageSegments[imageSegments.length - 1];
 
   try {
     const codeFileName = 'judge.src';
     await fs.writeFile(path.join(tmpDir, codeFileName), code, 'utf8');
     await fs.writeFile(path.join(tmpDir, 'input.json'), JSON.stringify(inputJson), 'utf8');
 
-    // 実行コマンド: JSONファイルをリダイレクトして流し込む
-    const runnerCmd = `${cmd} /volume/${codeFileName} < /volume/input.json`;
+    // 実行コマンド: script /volume/judge.src < /volume/input.json
+    const runnerCmd = `script /volume/${codeFileName} < /volume/input.json`;
 
     const container = await docker.createContainer({
       Image: image,
