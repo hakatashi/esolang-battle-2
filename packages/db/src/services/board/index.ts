@@ -32,13 +32,16 @@ export async function updateBoardState(
 /**
  * ボードの全データを更新する
  */
-export async function upsertBoardData(prisma: PrismaClient, data: {
-  id: number | null;
-  contestId: number;
-  type: string;
-  config: any;
-  state: any;
-}) {
+export async function upsertBoardData(
+  prisma: PrismaClient,
+  data: {
+    id: number | null;
+    contestId: number;
+    type: string;
+    config: any;
+    state: any;
+  }
+) {
   const { id, ...payload } = data;
   if (id) {
     return await prisma.board.update({

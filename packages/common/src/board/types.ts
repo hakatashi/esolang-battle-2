@@ -92,5 +92,9 @@ export interface IBoardEngine<TConfig extends BoardConfig = BoardConfig> {
   createInitialState(config: TConfig): BoardState;
 
   // 複数の提出を適用して最終的な状態を返す (再計算用)
-  recalculate(config: TConfig, initialState: BoardState, submissions: BoardSubmission[]): BoardState;
+  recalculate(
+    config: TConfig,
+    initialState: BoardState,
+    submissions: BoardSubmission[]
+  ): BoardState;
 }
