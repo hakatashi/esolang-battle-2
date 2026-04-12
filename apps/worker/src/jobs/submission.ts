@@ -37,7 +37,7 @@ export async function processSubmission(submissionId: number) {
   // 1. 全テストケースの実行
   const dockerResults = await runAllTestCasesInSingleContainer(
     image,
-    submission.code,
+    Buffer.from(submission.code),
     problem.testCases.map((tc: any) => ({ id: tc.id, input: tc.input }))
   );
 

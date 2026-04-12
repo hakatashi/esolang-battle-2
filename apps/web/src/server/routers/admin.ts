@@ -462,12 +462,13 @@ export const adminRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, code, ...data } = input;
+      const codeBuffer = code !== undefined ? Buffer.from(code as string) : undefined;
       return await ctx.prisma.submission.update({
         where: { id },
         data: {
           ...data,
-          code,
-          codeLength: code ? code.length : undefined,
+          code: codeBuffer,
+          codeLength: codeBuffer ? codeBuffer.length : undefined,
         },
       });
     }),

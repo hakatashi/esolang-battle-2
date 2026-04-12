@@ -39,7 +39,7 @@ const getHostConfig = (memoryLimit: number): Docker.HostConfig => ({
  */
 async function runExecutionBatch(
   image: string,
-  code: string,
+  code: string | Buffer,
   testCases: TestCaseWithIO[],
   timeoutMs: number,
   memoryLimit: number
@@ -49,7 +49,7 @@ async function runExecutionBatch(
   try {
     // 1. 準備: コードと各テストケースの入力を書き出す
     const codeFileName = 'solution.src';
-    await fs.writeFile(path.join(tmpDir, codeFileName), code, 'utf8');
+    await fs.writeFile(path.join(tmpDir, codeFileName), code);
 
     const scriptLines: string[] = [];
     for (const tc of testCases) {
@@ -132,11 +132,11 @@ async function runExecutionBatch(
 }
 
 /**
- * 単一のコード実行 (コードテスト用)
+ * 単一のコード execution (コードテスト用)
  */
 export async function runCode(
   image: string,
-  code: string,
+  code: string | Buffer,
   stdin = '',
   timeoutMs: number = DEFAULT_TIMEOUT_MS
 ): Promise<DockerResult> {
@@ -155,12 +155,13 @@ export async function runCode(
  */
 export async function runAllTestCasesInSingleContainer(
   image: string,
-  code: string,
+  code: string | Buffer,
   testCases: TestCaseWithIO[],
   timeoutMs: number = DEFAULT_TIMEOUT_MS * 2
 ): Promise<Record<number, DockerResult>> {
   return await runExecutionBatch(image, code, testCases, timeoutMs, BATCH_MEMORY_LIMIT);
 }
+
 
 /**
  * ジャッジ用スクリプト (Checker/Aggregator) を実行する

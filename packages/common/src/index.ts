@@ -48,7 +48,8 @@ export const testCodeSchema = z.object({
 });
 
 export const submitCodeSchema = z.object({
-  code: z.string(),
+  code: z.string().max(2 * 1024 * 1024), // Approx 2MB (handles 1MB binary + Base64 overhead)
+  isBase64: z.boolean().optional(),
   languageId: z.number(),
   problemId: z.number(),
 });

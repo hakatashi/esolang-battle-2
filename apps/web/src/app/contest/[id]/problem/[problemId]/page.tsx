@@ -5,9 +5,10 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 
+import { CodeSubmitForm } from '@/components/submission/CodeSubmitForm';
 import { trpc } from '@/utils/trpc';
 import { CopyOutlined } from '@ant-design/icons';
-import { Button, Select, Tooltip, message } from 'antd';
+import { App, Button, Tooltip } from 'antd';
 
 // コピーボタン用のサブコンポーネント
 const CopyButton = ({ text, label }: { text: string; label: string }) => {
@@ -37,6 +38,7 @@ export default function ProblemDetailPage() {
   const contestId = Number(params.id);
   const problemId = Number(params.problemId);
   const router = useRouter();
+  const { message } = App.useApp();
 
   const {
     data: problem,
@@ -47,7 +49,6 @@ export default function ProblemDetailPage() {
   const { data: me } = trpc.me.useQuery();
   const submitMutation = trpc.submitCode.useMutation();
 
-  const [code, setCode] = useState('');
   const [selectedLanguageId, setSelectedLanguageId] = useState<string>('');
 
   useEffect(() => {
@@ -56,18 +57,13 @@ export default function ProblemDetailPage() {
     }
   }, [problem, selectedLanguageId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLanguageId) {
-      message.error('言語を選択してください');
-      return;
-    }
-
+  const handleSubmit = async (data: { code: string; isBase64: boolean }) => {
     try {
       await submitMutation.mutateAsync({
         problemId,
         languageId: Number(selectedLanguageId),
-        code,
+        code: data.code,
+        isBase64: data.isBase64,
       });
       message.success('提出が完了しました');
       router.push(`/contest/${contestId}/submissions`);
@@ -151,64 +147,14 @@ export default function ProblemDetailPage() {
 
       <div className="border-t pt-8">
         <h3 className="mb-6 text-xl font-bold text-gray-900">Submit Solution</h3>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="max-w-xs">
-            <label
-              htmlFor="language-select"
-              className="mb-2 block text-sm font-medium text-gray-700"
-            >
-              言語選択
-            </label>
-            <Select
-              id="language-select"
-              showSearch
-              className="w-full"
-              value={selectedLanguageId || undefined}
-              onChange={setSelectedLanguageId}
-              placeholder="言語を選択"
-              optionFilterProp="name"
-              fieldNames={{ label: 'name', value: 'id' }}
-              options={problem.acceptedLanguages.map((lang) => ({
-                id: String(lang.id),
-                name: lang.name,
-              }))}
-              filterOption={(input, option) =>
-                (option?.name ?? '').toLowerCase().includes(input.toLowerCase())
-              }
-            />
-          </div>
-
-          <div>
-            <label htmlFor="code-textarea" className="mb-2 block text-sm font-medium text-gray-700">
-              ソースコード
-            </label>
-            <textarea
-              id="code-textarea"
-              rows={12}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 font-mono text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-              placeholder="ここにコードを入力..."
-            />
-            <div className="mt-2 flex justify-end gap-4 text-xs text-gray-500">
-              <span>文字数: {code.length} chars</span>
-              <span>バイト数: {new TextEncoder().encode(code).length} bytes</span>
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              type="primary"
-              htmlType="submit"
-              size="large"
-              loading={submitMutation.isPending}
-              disabled={!selectedLanguageId}
-              className="px-12 font-bold"
-            >
-              提出する
-            </Button>
-          </div>
-        </form>
+        <CodeSubmitForm
+          languages={problem.acceptedLanguages}
+          selectedLanguageId={selectedLanguageId}
+          onLanguageChange={setSelectedLanguageId}
+          onSubmit={handleSubmit}
+          submitLoading={submitMutation.isPending}
+          submitText="提出する"
+        />
       </div>
     </div>
   );

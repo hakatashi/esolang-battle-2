@@ -1,3 +1,5 @@
+import { isUtf8 } from 'node:buffer';
+
 import { PrismaClient } from '../../prisma/generated/client/index';
 
 export type GetSubmissionsFilter = {
@@ -62,7 +64,7 @@ export async function findSubmissions(prisma: PrismaClient, filter: GetSubmissio
 }
 
 export async function findSubmissionDetail(prisma: PrismaClient, id: number) {
-  return await prisma.submission.findUnique({
+  const submission = await prisma.submission.findUnique({
     where: { id },
     include: {
       language: true,
@@ -77,21 +79,40 @@ export async function findSubmissionDetail(prisma: PrismaClient, id: number) {
       },
     },
   });
+
+  if (!submission) return null;
+
+  const buffer = Buffer.from(submission.code);
+  const isBinary = !isUtf8(buffer);
+
+  // フロントエンドで扱いやすい形式に変換
+  const { code: _, ...rest } = submission;
+  return {
+    ...rest,
+    codeText: isBinary ? null : buffer.toString('utf8'),
+    codeBase64: buffer.toString('base64'),
+    isBinary,
+  };
 }
 
 export async function createSubmission(
   prisma: PrismaClient,
   data: {
     code: string;
+    isBase64?: boolean;
     languageId: number;
     userId: number;
     problemId: number;
   }
 ) {
+  const codeBuffer = data.isBase64
+    ? Buffer.from(data.code, 'base64')
+    : Buffer.from(data.code, 'utf8');
+
   return await prisma.submission.create({
     data: {
-      code: data.code,
-      codeLength: data.code.length,
+      code: codeBuffer,
+      codeLength: codeBuffer.length,
       submittedAt: new Date(),
       score: null,
       language: { connect: { id: data.languageId } },

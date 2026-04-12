@@ -39,7 +39,9 @@ export const submissionRouter = router({
 
       return {
         id: submission.id,
-        code: submission.code,
+        codeText: submission.codeText as string | null,
+        codeBase64: submission.codeBase64 as string,
+        isBinary: !!submission.isBinary,
         codeLength: submission.codeLength,
         score: submission.score,
         status: submission.status,

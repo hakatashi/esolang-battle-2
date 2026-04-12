@@ -5,7 +5,8 @@ import React from 'react';
 import { useParams } from 'next/navigation';
 
 import { trpc } from '@/utils/trpc';
-import { Tag } from 'antd';
+import { DownloadOutlined, FileUnknownOutlined } from '@ant-design/icons';
+import { Button, Tag } from 'antd';
 
 export default function SubmissionDetailPage() {
   const params = useParams();
@@ -39,6 +40,13 @@ export default function SubmissionDetailPage() {
       default:
         return 'text-gray-600';
     }
+  };
+
+  const handleDownload = () => {
+    const link = document.createElement('a');
+    link.href = `data:application/octet-stream;base64,${submission.codeBase64}`;
+    link.download = `submission_${submission.id}_${submission.language.name.toLowerCase().replace(/\s+/g, '_')}`;
+    link.click();
   };
 
   return (
@@ -98,10 +106,29 @@ export default function SubmissionDetailPage() {
       )}
 
       <div className="space-y-4">
-        <h3 className="mb-3 text-lg font-semibold text-gray-900">ソースコード</h3>
-        <pre className="overflow-x-auto rounded-lg bg-gray-900 p-6 font-mono text-sm leading-relaxed text-gray-100 shadow-inner">
-          {submission.code}
-        </pre>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">ソースコード</h3>
+          <Button icon={<DownloadOutlined />} onClick={handleDownload}>
+            Download Code
+          </Button>
+        </div>
+
+        {submission.isBinary ? (
+          <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center">
+            <FileUnknownOutlined className="mb-4 text-4xl text-gray-400" />
+            <div className="font-medium text-gray-600">Binary Data Detected</div>
+            <p className="mt-1 text-sm text-gray-400">
+              This file contains non-UTF-8 characters and cannot be displayed as text.
+            </p>
+            <Button className="mt-4" onClick={handleDownload}>
+              Download to View
+            </Button>
+          </div>
+        ) : (
+          <pre className="overflow-x-auto rounded-lg bg-gray-900 p-6 font-mono text-sm leading-relaxed text-gray-100 shadow-inner">
+            {submission.codeText}
+          </pre>
+        )}
       </div>
 
       <div>

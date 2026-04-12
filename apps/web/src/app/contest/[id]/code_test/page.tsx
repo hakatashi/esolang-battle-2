@@ -4,8 +4,9 @@ import React, { useEffect, useState } from 'react';
 
 import { useParams } from 'next/navigation';
 
+import { CodeSubmitForm } from '@/components/submission/CodeSubmitForm';
 import { trpc } from '@/utils/trpc';
-import { Button, Popconfirm, Select } from 'antd';
+import { Button, Popconfirm } from 'antd';
 
 export default function CodeTestPage() {
   const params = useParams();
@@ -54,7 +55,6 @@ export default function CodeTestPage() {
 
   useEffect(() => {
     if (languages && languages.length > 0 && !selectedLanguageId) {
-      // 保存されたデータがない場合のみデフォルト値をセット
       const saved = localStorage.getItem(storageKey);
       if (!saved) {
         setSelectedLanguageId(String(languages[0].id));
@@ -62,20 +62,33 @@ export default function CodeTestPage() {
     }
   }, [languages, selectedLanguageId, storageKey]);
 
-  async function handleRunTest(e: React.FormEvent) {
-    e.preventDefault();
+  const handleRunTest = async (data: { code: string; isBase64: boolean }) => {
     try {
-      const languageId = Number(selectedLanguageId);
       const res = await testCodeMutation.mutateAsync({
-        code: testCodeText,
-        languageId,
+        code: data.code,
+        languageId: Number(selectedLanguageId),
         stdin: stdinText,
       });
       setResult(res);
+      setTestCodeText(data.code); // 状態を同期
     } catch (err) {
       console.error(err);
     }
-  }
+  };
+
+  const handleReset = () => {
+    setTestCodeText('');
+    setStdinText('');
+    setResult(null);
+    testCodeMutation.reset();
+    const data = {
+      languageId: selectedLanguageId,
+      code: '',
+      stdin: '',
+      result: null,
+    };
+    localStorage.setItem(storageKey, JSON.stringify(data));
+  };
 
   if (isLoadingLanguages) return <div className="py-4">Loading languages...</div>;
   if (languagesError)
@@ -87,92 +100,34 @@ export default function CodeTestPage() {
 
   return (
     <div className="max-w-4xl space-y-8">
-      <form className="space-y-6" onSubmit={handleRunTest}>
-        <div>
-          <label htmlFor="language-select" className="mb-2 block text-sm font-medium text-gray-700">
-            言語
-          </label>
-          <div className="max-w-xs">
-            <Select
-              id="language-select"
-              showSearch
-              className="w-full"
-              placeholder="言語を検索・選択"
-              optionFilterProp="name"
-              fieldNames={{ label: 'name', value: 'id' }}
-              value={selectedLanguageId || undefined}
-              onChange={(value) => setSelectedLanguageId(value)}
-              options={languages.map((lang) => ({
-                id: String(lang.id),
-                name: lang.name,
-              }))}
-              filterOption={(input, option) =>
-                (option?.name ?? '').toLowerCase().includes(input.toLowerCase())
-              }
+      <CodeSubmitForm
+        languages={languages}
+        selectedLanguageId={selectedLanguageId}
+        onLanguageChange={setSelectedLanguageId}
+        onSubmit={handleRunTest}
+        submitLoading={testCodeMutation.isPending}
+        submitText="テスト実行"
+        initialCode={testCodeText}
+        afterCodeFields={
+          <div>
+            <label htmlFor="stdin-area" className="mb-2 block text-sm font-medium text-gray-700">
+              標準入力 (stdin)
+            </label>
+            <textarea
+              id="stdin-area"
+              rows={4}
+              value={stdinText}
+              onChange={(e) => setStdinText(e.target.value)}
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 font-mono shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+              placeholder="標準入力として与えたい文字列を入力..."
             />
           </div>
-        </div>
-
-        <div>
-          <label htmlFor="test-code-area" className="mb-2 block text-sm font-medium text-gray-700">
-            コード{' '}
-            <span className="text-xs font-normal text-gray-500">(テスト用・提出されません)</span>
-          </label>
-          <textarea
-            id="test-code-area"
-            rows={10}
-            value={testCodeText}
-            onChange={(e) => setTestCodeText(e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 font-mono shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-            placeholder="テストしたいコードをここに入力..."
-          />
-          <div className="mt-1 flex justify-end gap-4 text-xs text-gray-500">
-            <span>文字数: {testCodeText.length} chars</span>
-            <span>バイト数: {new TextEncoder().encode(testCodeText).length} bytes</span>
-          </div>
-        </div>
-
-        <div>
-          <label htmlFor="stdin-area" className="mb-2 block text-sm font-medium text-gray-700">
-            標準入力 (stdin)
-          </label>
-          <textarea
-            id="stdin-area"
-            rows={4}
-            value={stdinText}
-            onChange={(e) => setStdinText(e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 font-mono shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-            placeholder="標準入力として与えたい文字列を入力..."
-          />
-        </div>
-
-        <div className="flex items-center gap-4">
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={testCodeMutation.isPending}
-            size="large"
-            className="min-w-[120px]"
-          >
-            テスト実行
-          </Button>
+        }
+        footerActions={
           <Popconfirm
             title="コードと結果のリセット"
             description="コード、標準入力、および実行結果をリセットしますか？（言語設定は保持されます）"
-            onConfirm={() => {
-              setTestCodeText('');
-              setStdinText('');
-              setResult(null);
-              testCodeMutation.reset();
-              // 言語は保持したまま localStorage を更新
-              const data = {
-                languageId: selectedLanguageId,
-                code: '',
-                stdin: '',
-                result: null,
-              };
-              localStorage.setItem(storageKey, JSON.stringify(data));
-            }}
+            onConfirm={handleReset}
             okText="リセットする"
             cancelText="キャンセル"
             okButtonProps={{ danger: true }}
@@ -181,14 +136,8 @@ export default function CodeTestPage() {
               コードと結果をリセット
             </Button>
           </Popconfirm>
-        </div>
-
-        {testCodeMutation.error && (
-          <div className="rounded-md border-l-4 border-red-400 bg-red-50 p-4 text-red-800">
-            {testCodeMutation.error.message}
-          </div>
-        )}
-      </form>
+        }
+      />
 
       {displayResult && (
         <div className="mt-8 space-y-4 border-t pt-8">
