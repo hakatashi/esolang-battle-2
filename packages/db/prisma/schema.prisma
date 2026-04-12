@@ -157,6 +157,7 @@ model Submission {
   submittedAt DateTime
   status      ExecutionStatus @default(WJ)
   score       Int?
+  message     String?         /// High-level summary from judge
 
   language   Language @relation(fields: [languageId], references: [id])
   languageId Int

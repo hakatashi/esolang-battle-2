@@ -228,6 +228,7 @@ export async function processSubmission(submissionId: number) {
     data: {
       score: finalResult.finalScore,
       status: finalResult.status,
+      message: finalResult.summaryMessage,
     },
   });
 

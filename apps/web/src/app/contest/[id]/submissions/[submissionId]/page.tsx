@@ -86,9 +86,19 @@ export default function SubmissionDetailPage() {
           </span>
           <span className="ml-2 text-sm text-gray-400">({submission.codeLength} bytes)</span>
         </div>
-      </div>
+        </div>
 
-      <div>
+        {submission.message && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-800">
+          <div className="flex items-center gap-2 font-bold mb-1">
+            <span className="text-lg">Result Summary</span>
+          </div>
+          <p className="text-sm whitespace-pre-wrap">{submission.message}</p>
+        </div>
+        )}
+
+        <div className="space-y-4">
+
         <h3 className="mb-3 text-lg font-semibold text-gray-900">ソースコード</h3>
         <pre className="overflow-x-auto rounded-lg bg-gray-900 p-6 font-mono text-sm leading-relaxed text-gray-100 shadow-inner">
           {submission.code}
