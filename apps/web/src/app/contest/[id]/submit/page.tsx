@@ -142,7 +142,7 @@ function SubmitForm() {
           type="primary"
           htmlType="submit"
           loading={submitMutation.isPending}
-          disabled={!code.trim() || !selectedLanguageId || !selectedProblemId}
+          disabled={!selectedLanguageId || !selectedProblemId}
           size="large"
           className="min-w-[120px]"
         >

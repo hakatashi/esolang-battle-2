@@ -151,7 +151,6 @@ export default function CodeTestPage() {
             type="primary"
             htmlType="submit"
             loading={testCodeMutation.isPending}
-            disabled={!testCodeText.trim()}
             size="large"
             className="min-w-[120px]"
           >

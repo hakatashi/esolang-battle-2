@@ -62,10 +62,6 @@ export default function ProblemDetailPage() {
       message.error('言語を選択してください');
       return;
     }
-    if (!code.trim()) {
-      message.error('コードを入力してください');
-      return;
-    }
 
     try {
       await submitMutation.mutateAsync({
