@@ -48,7 +48,7 @@ export async function findSubmissions(prisma: PrismaClient, filter: GetSubmissio
     orderBy.submittedAt = 'desc';
   }
 
-  return await prisma.submission.findMany({
+  const submissions = await prisma.submission.findMany({
     where,
     orderBy,
     include: {
@@ -61,6 +61,11 @@ export async function findSubmissions(prisma: PrismaClient, filter: GetSubmissio
       language: true,
     },
   });
+
+  return submissions.map((sub) => {
+    const { code: _, ...rest } = sub;
+    return rest;
+  });
 }
 
 export async function findSubmissionDetail(prisma: PrismaClient, id: number) {
@@ -68,7 +73,16 @@ export async function findSubmissionDetail(prisma: PrismaClient, id: number) {
     where: { id },
     include: {
       language: true,
-      problem: true,
+      user: {
+        include: {
+          teams: true,
+        },
+      },
+      problem: {
+        include: {
+          contest: true,
+        },
+      },
       executions: {
         include: {
           testcase: true,

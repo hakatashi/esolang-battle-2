@@ -22,6 +22,9 @@ export default function SubmissionsPage() {
   const { data: me } = trpc.me.useQuery();
   const myTeam = me?.teams.find((t) => t.contestId === contestId);
 
+  const { data: contest } = trpc.getContest.useQuery({ contestId });
+  const isOver = contest ? new Date() > new Date(contest.endAt) : false;
+
   // URLから状態を取得
   const scope = (searchParams.get('scope') as Scope) || 'self';
   const currentPage = Number(searchParams.get('page')) || 1;
@@ -246,7 +249,7 @@ export default function SubmissionsPage() {
         >
           自チームの提出
         </Button>
-        {me?.isAdmin && (
+        {(me?.isAdmin || isOver) && (
           <Button
             type={scope === 'all' ? 'primary' : 'default'}
             onClick={() => updateUrl({ scope: 'all', page: '1' })}

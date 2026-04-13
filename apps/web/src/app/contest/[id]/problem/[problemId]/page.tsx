@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 
+import { LoginRequiredMessage } from '@/components/LoginRequiredMessage';
 import { CodeSubmitForm } from '@/components/submission/CodeSubmitForm';
 import { trpc } from '@/utils/trpc';
 import { CopyOutlined } from '@ant-design/icons';
@@ -40,13 +41,15 @@ export default function ProblemDetailPage() {
   const router = useRouter();
   const { message } = App.useApp();
 
+  const { data: me, isLoading: isLoadingMe } = trpc.me.useQuery();
+  const isLoggedIn = !!me;
+
   const {
     data: problem,
     isLoading,
     error,
   } = trpc.getProblem.useQuery({ problemId }, { enabled: !!problemId });
 
-  const { data: me } = trpc.me.useQuery();
   const submitMutation = trpc.submitCode.useMutation();
 
   const [selectedLanguageId, setSelectedLanguageId] = useState<string>('');
@@ -58,6 +61,7 @@ export default function ProblemDetailPage() {
   }, [problem, selectedLanguageId]);
 
   const handleSubmit = async (data: { code: string; isBase64: boolean }) => {
+    if (!isLoggedIn) return;
     try {
       await submitMutation.mutateAsync({
         problemId,
@@ -73,7 +77,7 @@ export default function ProblemDetailPage() {
     }
   };
 
-  if (isLoading) return <div>Loading problem details...</div>;
+  if (isLoading || isLoadingMe) return <div>Loading problem details...</div>;
   if (error) return <div className="text-red-600">Error: {error.message}</div>;
   if (!problem) return <div>問題が見つかりませんでした。</div>;
 
@@ -147,14 +151,18 @@ export default function ProblemDetailPage() {
 
       <div className="border-t pt-8">
         <h3 className="mb-6 text-xl font-bold text-gray-900">Submit Solution</h3>
-        <CodeSubmitForm
-          languages={problem.acceptedLanguages}
-          selectedLanguageId={selectedLanguageId}
-          onLanguageChange={setSelectedLanguageId}
-          onSubmit={handleSubmit}
-          submitLoading={submitMutation.isPending}
-          submitText="提出する"
-        />
+        {isLoggedIn ? (
+          <CodeSubmitForm
+            languages={problem.acceptedLanguages}
+            selectedLanguageId={selectedLanguageId}
+            onLanguageChange={setSelectedLanguageId}
+            onSubmit={handleSubmit}
+            submitLoading={submitMutation.isPending}
+            submitText="提出する"
+          />
+        ) : (
+          <LoginRequiredMessage />
+        )}
       </div>
     </div>
   );

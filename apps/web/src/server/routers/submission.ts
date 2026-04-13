@@ -19,8 +19,37 @@ import { submissionQueue, testQueue, testQueueEvents } from '../queue';
 import { protectedProcedure, publicProcedure, router } from '../trpc';
 
 export const submissionRouter = router({
-  getSubmissions: publicProcedure.input(submissionFilterSchema).query(async ({ ctx, input }) => {
-    return await findSubmissions(ctx.prisma, input ?? {});
+  getSubmissions: protectedProcedure.input(submissionFilterSchema).query(async ({ ctx, input }) => {
+    const contestId = input?.contestId;
+    if (!contestId) return await findSubmissions(ctx.prisma, input ?? {});
+
+    const contest = await ctx.prisma.contest.findUnique({
+      where: { id: contestId },
+    });
+    const isOver = contest ? new Date() > new Date(contest.endAt) : false;
+    const isAdmin = !!ctx.user.isAdmin;
+
+    const filter = { ...input };
+    if (!isAdmin && !isOver) {
+      // コンテスト中は自チームの提出のみ表示
+      const myTeam = ctx.user.teams.find((t: any) => t.contestId === contestId);
+      const myTeamId = myTeam?.id;
+
+      if (filter.teamId) {
+        if (filter.teamId !== myTeamId) {
+          filter.teamId = myTeamId ?? -1;
+        }
+      } else if (filter.userId) {
+        if (filter.userId !== Number(ctx.user.id)) {
+          filter.userId = Number(ctx.user.id);
+        }
+      } else {
+        // フィルタがない場合は自チームに制限
+        filter.teamId = myTeamId ?? -1;
+      }
+    }
+
+    return await findSubmissions(ctx.prisma, filter);
   }),
   getLanguages: publicProcedure.query(async ({ ctx }) => {
     return await findAllLanguages(ctx.prisma);
@@ -33,9 +62,20 @@ export const submissionRouter = router({
   getSubmissionDetail: protectedProcedure
     .input(submissionIdSchema)
     .query(async ({ ctx, input }) => {
-      const submission = await findSubmissionDetail(ctx.prisma, input.submissionId);
+      const submission = (await findSubmissionDetail(ctx.prisma, input.submissionId)) as any;
       if (!submission) return null;
-      if (!ctx.user.isAdmin && submission.userId !== Number(ctx.user.id)) return null;
+
+      const contest = submission.problem?.contest;
+      const isOver = contest ? new Date() > new Date(contest.endAt) : false;
+      const isAdmin = !!ctx.user.isAdmin;
+      const isOwner = submission.userId === Number(ctx.user.id);
+
+      const contestId = submission.problem?.contestId;
+      const submitterTeam = submission.user?.teams?.find((t: any) => t.contestId === contestId);
+      const myTeam = ctx.user.teams?.find((t: any) => t.contestId === contestId);
+      const isTeammate = !!(submitterTeam && myTeam && submitterTeam.id === myTeam.id);
+
+      if (!isAdmin && !isOver && !isOwner && !isTeammate) return null;
 
       return {
         id: submission.id,
@@ -56,7 +96,7 @@ export const submissionRouter = router({
           id: submission.problem.id,
           title: submission.problem.title,
         },
-        executions: submission.executions.map((e) => ({
+        executions: submission.executions.map((e: any) => ({
           testcaseId: e.testcaseId,
           status: e.status,
           stdout: e.stdout,

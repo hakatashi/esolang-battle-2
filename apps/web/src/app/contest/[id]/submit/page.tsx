@@ -4,6 +4,7 @@ import React, { Suspense, useEffect, useState } from 'react';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 
+import { LoginRequiredMessage } from '@/components/LoginRequiredMessage';
 import { CodeSubmitForm } from '@/components/submission/CodeSubmitForm';
 import { trpc } from '@/utils/trpc';
 import { App, Select } from 'antd';
@@ -14,6 +15,9 @@ function SubmitForm() {
   const searchParams = useSearchParams();
   const contestId = Number(params.id);
   const { message } = App.useApp();
+
+  const { data: me, isLoading: isLoadingMe } = trpc.me.useQuery();
+  const isLoggedIn = !!me;
 
   const { data: languages, isLoading: isLoadingLangs } = trpc.getLanguages.useQuery();
   const { data: problems, isLoading: isLoadingProbs } = trpc.listProblems.useQuery({ contestId });
@@ -45,6 +49,7 @@ function SubmitForm() {
   }, [problems, searchParams, selectedProblemId]);
 
   const handleSubmit = async (data: { code: string; isBase64: boolean }) => {
+    if (!isLoggedIn) return;
     if (!selectedProblemId) {
       message.error('問題を選択してください');
       return;
@@ -64,43 +69,50 @@ function SubmitForm() {
     }
   };
 
-  if (isLoadingLangs || isLoadingProbs) return <div className="py-4">Loading form...</div>;
+  if (isLoadingLangs || isLoadingProbs || isLoadingMe)
+    return <div className="py-4">Loading form...</div>;
 
   return (
     <div className="max-w-4xl space-y-8">
-      <div className="max-w-md">
-        <label
-          htmlFor="problem-select-main"
-          className="mb-2 block text-sm font-medium text-gray-700"
-        >
-          問題を選択
-        </label>
-        <Select
-          id="problem-select-main"
-          showSearch
-          className="w-full"
-          placeholder="問題を選択してください"
-          optionFilterProp="label"
-          value={selectedProblemId || undefined}
-          onChange={(value) => setSelectedProblemId(value)}
-          options={problems?.map((p) => ({
-            value: String(p.id),
-            label: `${p.title} (ID ${p.id})`,
-          }))}
-          filterOption={(input, option) =>
-            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-          }
-        />
-      </div>
+      {isLoggedIn ? (
+        <>
+          <div className="max-w-md">
+            <label
+              htmlFor="problem-select-main"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              問題を選択
+            </label>
+            <Select
+              id="problem-select-main"
+              showSearch
+              className="w-full"
+              placeholder="問題を選択してください"
+              optionFilterProp="label"
+              value={selectedProblemId || undefined}
+              onChange={(value) => setSelectedProblemId(value)}
+              options={problems?.map((p) => ({
+                value: String(p.id),
+                label: `${p.title} (ID ${p.id})`,
+              }))}
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+            />
+          </div>
 
-      <CodeSubmitForm
-        languages={languages || []}
-        selectedLanguageId={selectedLanguageId}
-        onLanguageChange={setSelectedLanguageId}
-        onSubmit={handleSubmit}
-        submitLoading={submitMutation.isPending}
-        submitText="提出する"
-      />
+          <CodeSubmitForm
+            languages={languages || []}
+            selectedLanguageId={selectedLanguageId}
+            onLanguageChange={setSelectedLanguageId}
+            onSubmit={handleSubmit}
+            submitLoading={submitMutation.isPending}
+            submitText="提出する"
+          />
+        </>
+      ) : (
+        <LoginRequiredMessage />
+      )}
     </div>
   );
 }
