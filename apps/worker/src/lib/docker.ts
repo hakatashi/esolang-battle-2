@@ -57,9 +57,9 @@ async function runExecutionBatch(
       await fs.writeFile(path.join(tmpDir, `IN_${base}`), tc.input, 'utf8');
 
       // script /volume/solution.src < /volume/INPUT 形式
-      // ファイル名は固定なので直接埋め込み
+      // BusyBox の time -v を使用して詳細なリソース使用状況を記録
       scriptLines.push(
-        `script /volume/${codeFileName} < /volume/IN_${base} > /volume/OUT_${base} 2>/volume/ERR_${base}; echo $? > /volume/EXIT_${base}`
+        `/usr/bin/time -v -o /volume/TIME_${base} script /volume/${codeFileName} < /volume/IN_${base} > /volume/OUT_${base} 2>/volume/ERR_${base}; echo $? > /volume/EXIT_${base}`
       );
     }
 
@@ -77,7 +77,6 @@ async function runExecutionBatch(
       },
     });
 
-    const start = Date.now();
     await container.start();
 
     // 3. 監視: 終了またはタイムアウトを待つ
@@ -87,7 +86,6 @@ async function runExecutionBatch(
     );
 
     const raceResult: any = await Promise.race([waitPromise, timeoutPromise]);
-    const end = Date.now();
     const isTimeout = !!(raceResult && raceResult.timeout);
 
     if (isTimeout) {
@@ -102,10 +100,11 @@ async function runExecutionBatch(
     const results: Record<number, DockerResult> = {};
     for (const tc of testCases) {
       const base = String(tc.id);
-      const [stdout, stderr, exitText] = await Promise.all([
+      const [stdout, stderr, exitText, timeText] = await Promise.all([
         fs.readFile(path.join(tmpDir, `OUT_${base}`), 'utf8').catch(() => ''),
         fs.readFile(path.join(tmpDir, `ERR_${base}`), 'utf8').catch(() => ''),
         fs.readFile(path.join(tmpDir, `EXIT_${base}`), 'utf8').catch(() => '-1'),
+        fs.readFile(path.join(tmpDir, `TIME_${base}`), 'utf8').catch(() => ''),
       ]);
 
       let exitCode = parseInt(exitText.trim(), 10);
@@ -116,11 +115,31 @@ async function runExecutionBatch(
         finalStderr += '\nTime Limit Exceeded';
       }
 
+      // time -v の出力をパースして実行時間を計算 (User time + System time)
+      let durationMs = 0;
+      const userTimeMatch = timeText.match(/User time \(seconds\): ([\d.]+)/);
+      const sysTimeMatch = timeText.match(/System time \(seconds\): ([\d.]+)/);
+      const elapsedMatch = timeText.match(
+        /Elapsed \(wall clock\) time \(h:mm:ss or m:ss\): (?:(\d+):)?(\d+):([\d.]+)/
+      );
+
+      if (userTimeMatch && sysTimeMatch) {
+        const userTime = parseFloat(userTimeMatch[1]);
+        const sysTime = parseFloat(sysTimeMatch[1]);
+        durationMs = Math.round((userTime + sysTime) * 1000);
+      } else if (elapsedMatch) {
+        // フォールバック: Elapsed time から計算
+        const hours = elapsedMatch[1] ? parseInt(elapsedMatch[1], 10) : 0;
+        const mins = parseInt(elapsedMatch[2], 10);
+        const secs = parseFloat(elapsedMatch[3]);
+        durationMs = Math.round((hours * 3600 + mins * 60 + secs) * 1000);
+      }
+
       results[tc.id] = {
         stdout,
         stderr: finalStderr,
         exitCode: Number.isNaN(exitCode) ? -1 : exitCode,
-        durationMs: end - start,
+        durationMs: Math.max(0, durationMs),
       };
     }
     return results;
