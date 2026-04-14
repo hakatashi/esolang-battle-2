@@ -67,7 +67,7 @@ export default function JudgeDocsPage() {
         <Table
           pagination={false}
           size="small"
-          className="mb-6"
+          className="mb-4"
           dataSource={[
             { name: 'EXACT', desc: '完全一致' },
             { name: 'TRIM', desc: '前後の空白・改行を除去して一致' },
@@ -81,6 +81,37 @@ export default function JudgeDocsPage() {
             { title: 'Description', dataIndex: 'desc', key: 'desc' },
           ]}
         />
+
+        <Title level={5}>Built-in Checker Options (checkerConfig)</Title>
+        <Paragraph>
+          組み込みチェッカーは <code>checkerConfig</code> (JSON)
+          を通じて挙動をカスタマイズできます。
+        </Paragraph>
+        <List
+          size="small"
+          className="mb-4"
+          dataSource={[
+            {
+              name: 'ignoreExitCode',
+              type: 'boolean',
+              desc: 'trueに設定すると、終了コードが0以外でもRE(Runtime Error)とせず、出力を判定します。(デフォルト: false)',
+            },
+            {
+              name: 'epsilon',
+              type: 'number',
+              desc: 'FLOATチェッカーでの許容誤差を指定します（デフォルト: 1e-7）。',
+            },
+          ]}
+          renderItem={(item) => (
+            <List.Item>
+              <Text code>{item.name}</Text> ({item.type}): {item.desc}
+            </List.Item>
+          )}
+        />
+        <CodeBlock>{`{
+  "ignoreExitCode": true,
+  "epsilon": 1e-9
+}`}</CodeBlock>
 
         <Title level={4}>Custom Case Checker</Title>
         <Paragraph>
