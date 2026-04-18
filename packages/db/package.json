@@ -13,22 +13,24 @@
     }
   },
   "scripts": {
-    "build": "npx prisma generate && tsc",
-    "generate": "npx prisma generate",
-    "migrate": "npx prisma migrate dev",
-    "studio": "npx prisma studio"
+    "build": "pnpm exec prisma generate && tsc",
+    "generate": "pnpm exec prisma generate",
+    "migrate": "pnpm exec prisma migrate dev",
+    "studio": "pnpm exec prisma studio"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
-    "bcryptjs": "^2.4.3",
-    "dotenv": "^16.4.7",
+    "@prisma/client-runtime-utils": "^7.7.0",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
     "pg": "^8.20.0"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^25.5.0",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.11.11",
     "prisma": "^7.7.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.3"
   }
 }

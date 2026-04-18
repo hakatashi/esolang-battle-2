@@ -1,21 +1,17 @@
 {
   "name": "esolang-battle-2-monorepo",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
-    "dev:web": "npm run dev -w apps/web",
-    "dev:worker": "npm run dev -w apps/worker",
-    "start:worker": "npm run start -w apps/worker",
-    "build": "npm run build:common && npm run build:db && npm run build:apps",
-    "build:common": "npm run build -w packages/common",
-    "build:db": "npm run build -w packages/db",
-    "build:apps": "npm run build -w apps/web && npm run build -w apps/worker",
-    "generate": "npm run generate -w packages/db",
-    "migrate": "npm run migrate -w packages/db",
-    "studio": "npm run studio -w packages/db",
+    "dev:web": "pnpm --filter @esolang-battle/web run dev",
+    "dev:worker": "pnpm --filter @esolang-battle/worker run dev",
+    "start:worker": "pnpm --filter @esolang-battle/worker run start",
+    "build": "pnpm run build:common && pnpm run build:db && pnpm run build:apps",
+    "build:common": "pnpm --filter @esolang-battle/common run build",
+    "build:db": "pnpm --filter @esolang-battle/db run build",
+    "build:apps": "pnpm --filter @esolang-battle/web run build && pnpm --filter @esolang-battle/worker run build",
+    "generate": "pnpm --filter @esolang-battle/db run generate",
+    "migrate": "pnpm --filter @esolang-battle/db run migrate",
+    "studio": "pnpm --filter @esolang-battle/db run studio",
     "format": "prettier --write .",
     "check-format": "prettier --check .",
     "lint": "eslint .",
@@ -24,26 +20,26 @@
   "type": "module",
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "@next/eslint-plugin-next": "^15.5.15",
+    "@next/eslint-plugin-next": "^16.2.4",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-unused-imports": "^4.4.1",
-    "globals": "^15.15.0",
-    "prettier": "3.8.2",
-    "prettier-plugin-tailwindcss": "0.7.2",
+    "globals": "^17.5.0",
+    "prettier": "^3.8.3",
+    "prettier-plugin-tailwindcss": "^0.7.2",
     "prisma": "^7.7.0",
-    "typescript": "^6.0.2",
-    "typescript-eslint": "^8.58.1"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.58.2"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
     "pg": "^8.20.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   }
 }

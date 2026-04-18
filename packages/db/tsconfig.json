@@ -12,7 +12,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@esolang-battle/common": ["../common/dist/index.d.ts"]
+    }
   },
   "include": ["src/**/*", "prisma/generated/client/**/*"],
   "exclude": ["node_modules", "dist"]
