@@ -18,26 +18,25 @@ RUN turbo prune @esolang-battle/web --docker && mv out out-web
 
 # --- Builder stage ---
 FROM base-builder AS builder
+# ビルド時はデフォルトのインストール
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 RUN pnpm run build
 
 # --- Migration stage ---
 FROM base AS migration
 WORKDIR /app
-# db 用の剪定済み定義をコピー
 COPY --from=pruner /app/out-db/json/ .
 COPY --from=pruner /app/out-db/pnpm-lock.yaml ./pnpm-lock.yaml
-# 本番依存関係のみインストール
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
-# Prisma CLI をグローバルにインストール (ワークスペースの競合を回避)
-RUN pnpm install -g prisma@7.7.0
-# ビルド成果物と設定ファイルをコピー
+RUN npm install -g prisma@7.7.0 tsx@4.19.3
 COPY --from=builder /app/packages/db/prisma ./packages/db/prisma
 COPY --from=builder /app/packages/db/prisma.config.ts ./packages/db/
+# シード用のソースファイルをコピー
+COPY --from=builder /app/packages/db/package.json ./packages/db/
 WORKDIR /app/packages/db
 ENV NODE_ENV=production
-# グローバルな prisma コマンドを直接実行
-CMD ["prisma", "migrate", "deploy"]
+# マイグレーション実行後にシードを実行
+CMD prisma migrate deploy && prisma db seed
 
 # --- Web production stage ---
 FROM base AS web
@@ -54,12 +53,10 @@ FROM base AS worker
 RUN apk add --no-cache docker-cli
 WORKDIR /app
 ENV NODE_ENV=production
-# worker 用の剪定済み定義をコピー
 COPY --from=pruner /app/out-worker/json/ .
 COPY --from=pruner /app/out-worker/pnpm-lock.yaml ./pnpm-lock.yaml
-# 本番依存関係のみインストール
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --shamefully-hoist --prod --frozen-lockfile
-# ビルド成果物をコピー
+# 実行環境ではホイスティングを有効にする
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile --shamefully-hoist
 COPY --from=builder /app/apps/worker/dist ./apps/worker/dist
 COPY --from=builder /app/packages/db/prisma ./packages/db/prisma
 WORKDIR /app/apps/worker
