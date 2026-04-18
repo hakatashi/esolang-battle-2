@@ -83,7 +83,12 @@ export type BoardSubmission = {
 
 // --- Engine Interface ---
 export interface IBoardEngine<TConfig extends BoardConfig = BoardConfig> {
-  calculateUpdate(config: TConfig, state: BoardState, submission: BoardSubmission): BoardState;
+  calculateUpdate(
+    config: TConfig,
+    state: BoardState,
+    submission: BoardSubmission,
+    scoreOrder: 'ASC' | 'DESC'
+  ): BoardState;
 
   // 提出に対してどのセルがターゲットになるかを返す
   getTargetCellId(config: TConfig, submission: BoardSubmission): string | null;
@@ -95,6 +100,7 @@ export interface IBoardEngine<TConfig extends BoardConfig = BoardConfig> {
   recalculate(
     config: TConfig,
     initialState: BoardState,
-    submissions: BoardSubmission[]
+    submissions: BoardSubmission[],
+    scoreOrder: 'ASC' | 'DESC'
   ): BoardState;
 }

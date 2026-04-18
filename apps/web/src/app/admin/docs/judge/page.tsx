@@ -44,6 +44,33 @@ export default function JudgeDocsPage() {
         />
       </Card>
 
+      <Card title="順位付けとスコアリング" className="mb-8 shadow-sm">
+        <Paragraph>
+          コンテストの設定 <code>Score Standing Order</code>{' '}
+          によって、最終的な順位計算ロジックが変わります。
+        </Paragraph>
+        <List
+          dataSource={[
+            {
+              title: 'Descending (降順 - Battle形式)',
+              desc: '「合計スコアが大きい」順に順位を決定します。主にポイント制のバトルで使用します。',
+            },
+            {
+              title: 'Ascending (昇順 - Golf形式)',
+              desc: '「正解した問題数が多い」順に、問題数が同じ場合は「合計スコアが小さい」順に順位を決定します。主にコードゴルフで使用します。',
+            },
+          ]}
+          renderItem={(item) => (
+            <List.Item>
+              <div className="flex flex-col">
+                <Text strong>{item.title}</Text>
+                <Text>{item.desc}</Text>
+              </div>
+            </List.Item>
+          )}
+        />
+      </Card>
+
       <Card id="case-checker" title="1. Case Checker" className="mb-8 shadow-sm">
         <Paragraph>個別のテストケースごとの判定を行います。</Paragraph>
 

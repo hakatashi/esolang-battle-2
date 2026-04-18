@@ -3,7 +3,7 @@
 import Link from 'next/link';
 
 import { trpc } from '@/utils/trpc';
-import { ClockCircleOutlined, TrophyOutlined } from '@ant-design/icons';
+import { ClockCircleOutlined, LockOutlined, TrophyOutlined } from '@ant-design/icons';
 import { Card, Col, Row, Spin, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
 
@@ -12,18 +12,41 @@ const { Title, Text, Paragraph } = Typography;
 export default function ContestsPage() {
   const { data: contests, isLoading, error } = trpc.getContests.useQuery();
 
-  const getStatusTag = (startAt: string, endAt: string) => {
+  const getStatusTags = (startAt: string, endAt: string, isPublic: boolean) => {
     const now = dayjs();
     const start = dayjs(startAt);
     const end = dayjs(endAt);
+    const tags = [];
+
+    if (!isPublic) {
+      tags.push(
+        <Tag key="private" color="volcano" icon={<LockOutlined />}>
+          非公開
+        </Tag>
+      );
+    }
 
     if (now.isAfter(end)) {
-      return <Tag color="default">終了</Tag>;
+      tags.push(
+        <Tag key="status" color="default">
+          終了
+        </Tag>
+      );
     } else if (now.isBefore(start)) {
-      return <Tag color="blue">開始前</Tag>;
+      tags.push(
+        <Tag key="status" color="blue">
+          開始前
+        </Tag>
+      );
     } else {
-      return <Tag color="green">開催中</Tag>;
+      tags.push(
+        <Tag key="status" color="green">
+          開催中
+        </Tag>
+      );
     }
+
+    return tags;
   };
 
   return (
@@ -60,7 +83,9 @@ export default function ContestsPage() {
                     title={
                       <div className="flex items-center justify-between">
                         <span className="truncate">{c.name}</span>
-                        {getStatusTag(c.startAt, c.endAt)}
+                        <div className="flex gap-1">
+                          {getStatusTags(c.startAt, c.endAt, c.isPublic)}
+                        </div>
                       </div>
                     }
                   >

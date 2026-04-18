@@ -85,6 +85,8 @@ export const upsertContestSchema = z.object({
   name: z.string(),
   startAt: z.coerce.date(),
   endAt: z.coerce.date(),
+  isPublic: z.boolean().optional(),
+  scoreOrder: z.enum(['ASC', 'DESC']).optional(),
 });
 
 export const upsertTeamSchema = z.object({

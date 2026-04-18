@@ -6,7 +6,12 @@ export abstract class BaseBoardEngine<
   abstract getAdjacentCellIds(config: TConfig, cellId: string): string[];
   abstract getTargetCellId(config: TConfig, submission: BoardSubmission): string | null;
 
-  calculateUpdate(config: TConfig, state: BoardState, submission: BoardSubmission): BoardState {
+  calculateUpdate(
+    config: TConfig,
+    state: BoardState,
+    submission: BoardSubmission,
+    scoreOrder: 'ASC' | 'DESC'
+  ): BoardState {
     const targetCellId = this.getTargetCellId(config, submission);
     if (!targetCellId || !state[targetCellId]) return state;
 
@@ -20,8 +25,15 @@ export abstract class BaseBoardEngine<
       return state;
     }
 
-    if (cell.score !== null && submission.codeLength >= cell.score) {
-      return state;
+    const subScore = submission.score ?? 0;
+
+    // スコア比較ロジック: すでにより良いスコアがある場合は更新しない
+    if (cell.score !== null) {
+      if (scoreOrder === 'ASC') {
+        if (subScore >= cell.score) return state;
+      } else {
+        if (subScore <= cell.score) return state;
+      }
     }
 
     const isAdjacentToOwned = this.isAdjacentToTeam(config, state, targetCellId, team.id);
@@ -32,7 +44,7 @@ export abstract class BaseBoardEngine<
         ...state,
         [targetCellId]: {
           ownerTeamId: team.id,
-          score: submission.codeLength,
+          score: subScore,
           submissionId: submission.id,
         },
       };
@@ -61,11 +73,12 @@ export abstract class BaseBoardEngine<
   recalculate(
     config: TConfig,
     initialState: BoardState,
-    submissions: BoardSubmission[]
+    submissions: BoardSubmission[],
+    scoreOrder: 'ASC' | 'DESC'
   ): BoardState {
     let state = initialState;
     for (const submission of submissions) {
-      state = this.calculateUpdate(config, state, submission);
+      state = this.calculateUpdate(config, state, submission, scoreOrder);
     }
     return state;
   }

@@ -13,6 +13,7 @@ import {
   App,
   Button,
   Card,
+  Checkbox,
   DatePicker,
   Form,
   Input,
@@ -47,7 +48,9 @@ export default function ContestEdit() {
     currentValues &&
     (currentValues.name !== initialContest.name ||
       dayjs(currentValues.startAt).toISOString() !== dayjs(initialContest.startAt).toISOString() ||
-      dayjs(currentValues.endAt).toISOString() !== dayjs(initialContest.endAt).toISOString());
+      dayjs(currentValues.endAt).toISOString() !== dayjs(initialContest.endAt).toISOString() ||
+      currentValues.isPublic !== initialContest.isPublic ||
+      currentValues.scoreOrder !== initialContest.scoreOrder);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -118,22 +121,42 @@ export default function ContestEdit() {
               <Form.Item label="Name" name="name" rules={[{ required: true }]}>
                 <Input />
               </Form.Item>
-              <Form.Item
-                label="Start At"
-                name="startAt"
-                rules={[{ required: true }]}
-                getValueProps={(value) => ({ value: value ? dayjs(value) : undefined })}
-              >
-                <DatePicker showTime />
-              </Form.Item>
-              <Form.Item
-                label="End At"
-                name="endAt"
-                rules={[{ required: true }]}
-                getValueProps={(value) => ({ value: value ? dayjs(value) : undefined })}
-              >
-                <DatePicker showTime />
-              </Form.Item>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <Form.Item
+                  label="Start At"
+                  name="startAt"
+                  rules={[{ required: true }]}
+                  getValueProps={(value) => ({ value: value ? dayjs(value) : undefined })}
+                >
+                  <DatePicker showTime style={{ width: '100%' }} />
+                </Form.Item>
+                <Form.Item
+                  label="End At"
+                  name="endAt"
+                  rules={[{ required: true }]}
+                  getValueProps={(value) => ({ value: value ? dayjs(value) : undefined })}
+                >
+                  <DatePicker showTime style={{ width: '100%' }} />
+                </Form.Item>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <Form.Item
+                  label="Score Standing Order"
+                  name="scoreOrder"
+                  rules={[{ required: true }]}
+                >
+                  <Select
+                    options={[
+                      { label: 'Descending (Higher is better - Battle)', value: 'DESC' },
+                      { label: 'Ascending (Lower is better - Golf)', value: 'ASC' },
+                    ]}
+                  />
+                </Form.Item>
+                <Form.Item name="isPublic" valuePropName="checked" style={{ marginTop: '32px' }}>
+                  <Checkbox>Public Visibility (visible on home page)</Checkbox>
+                </Form.Item>
+              </div>
             </Form>
           </div>
         </Tabs.TabPane>

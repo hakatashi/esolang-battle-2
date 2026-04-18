@@ -1,17 +1,22 @@
 import { contestIdSchema } from '@esolang-battle/common';
-import { findAllContests } from '@esolang-battle/db';
 
 import { getBoard } from '../function/getBoard';
 import { publicProcedure, router } from '../trpc';
 
 export const contestRouter = router({
   getContests: publicProcedure.query(async ({ ctx }) => {
-    const contests = await findAllContests(ctx.prisma);
+    // 管理者以外は公開されているコンテストのみ表示
+    const where = ctx.user?.isAdmin ? {} : { isPublic: true };
+    const contests = await ctx.prisma.contest.findMany({
+      where,
+      orderBy: { startAt: 'desc' },
+    });
     return contests.map((c) => ({
       id: c.id,
       name: c.name,
       startAt: c.startAt.toISOString(),
       endAt: c.endAt.toISOString(),
+      isPublic: c.isPublic,
     }));
   }),
   getBoard: publicProcedure.input(contestIdSchema).query(async ({ ctx, input }) => {
@@ -27,6 +32,8 @@ export const contestRouter = router({
       name: contest.name,
       startAt: contest.startAt.toISOString(),
       endAt: contest.endAt.toISOString(),
+      isPublic: contest.isPublic,
+      scoreOrder: contest.scoreOrder,
     };
   }),
   getTeams: publicProcedure.input(contestIdSchema).query(async ({ ctx, input }) => {
@@ -37,6 +44,12 @@ export const contestRouter = router({
   }),
   getStandings: publicProcedure.input(contestIdSchema).query(async ({ ctx, input }) => {
     const contestId = input.contestId;
+
+    const contest = await ctx.prisma.contest.findUnique({
+      where: { id: contestId },
+      select: { scoreOrder: true },
+    });
+    const isAsc = contest?.scoreOrder === 'ASC';
 
     // 1. 全問題を取得
     const problems = await ctx.prisma.problem.findMany({
@@ -64,7 +77,7 @@ export const contestRouter = router({
     });
 
     // 3. 有効な提出（スコアがあるもの）をすべて取得
-    const submissions = await ctx.prisma.submission.findMany({
+    const rawSubmissions = await ctx.prisma.submission.findMany({
       where: {
         problem: { contestId },
         score: { not: null },
@@ -76,33 +89,59 @@ export const contestRouter = router({
       },
     });
 
+    // score が確実に number であることを保証する型ガード
+    const submissions = rawSubmissions.filter(
+      (s): s is typeof s & { score: number } => s.score !== null
+    );
+
     // --- 個人順位の計算 ---
     const userStandings = users.map((user) => {
-      const problemScores: Record<number, number> = {};
-      problems.forEach((p) => (problemScores[p.id] = 0));
+      const problemScores: Record<number, number | null> = {};
+      problems.forEach((p) => (problemScores[p.id] = null));
 
-      // 各問題の最高スコアを計算
       submissions
         .filter((s) => s.userId === user.id)
         .forEach((s) => {
-          if ((s.score ?? 0) > (problemScores[s.problemId] ?? 0)) {
-            problemScores[s.problemId] = s.score ?? 0;
+          const { score, problemId } = s;
+          const current = problemScores[problemId];
+
+          if (current === null) {
+            problemScores[problemId] = score;
+          } else {
+            if (isAsc) {
+              if (score < current) problemScores[problemId] = score;
+            } else {
+              if (score > current) problemScores[problemId] = score;
+            }
           }
         });
 
-      const totalScore = Object.values(problemScores).reduce((a, b) => a + b, 0);
+      const solvedCount = Object.values(problemScores).filter((v) => v !== null).length;
+      const totalScore = Object.values(problemScores)
+        .filter((v): v is number => v !== null)
+        .reduce((a, b) => a + b, 0);
 
       return {
         userId: user.id,
         userName: user.name,
         teamName: user.teams[0]?.name || user.teams[0]?.color || 'None',
         problemScores,
+        solvedCount,
         totalScore,
       };
     });
 
-    // スコア降順でソート
-    userStandings.sort((a, b) => b.totalScore - a.totalScore);
+    // ソート順の適用
+    userStandings.sort((a, b) => {
+      if (isAsc) {
+        if (a.solvedCount !== b.solvedCount) {
+          return b.solvedCount - a.solvedCount;
+        }
+        return a.totalScore - b.totalScore;
+      } else {
+        return b.totalScore - a.totalScore;
+      }
+    });
 
     // --- チーム順位の計算 ---
     const teamStandings = teams.map((team) => {
@@ -110,30 +149,51 @@ export const contestRouter = router({
         .filter((u) => u.teams.some((t) => t.id === team.id))
         .map((u) => u.id);
 
-      const problemScores: Record<number, number> = {};
-      problems.forEach((p) => (problemScores[p.id] = 0));
+      const problemScores: Record<number, number | null> = {};
+      problems.forEach((p) => (problemScores[p.id] = null));
 
-      // チームメンバー内での各問題の最高スコアを計算
       submissions
         .filter((s) => teamUserIds.includes(s.userId))
         .forEach((s) => {
-          if ((s.score ?? 0) > (problemScores[s.problemId] ?? 0)) {
-            problemScores[s.problemId] = s.score ?? 0;
+          const { score, problemId } = s;
+          const current = problemScores[problemId];
+
+          if (current === null) {
+            problemScores[problemId] = score;
+          } else {
+            if (isAsc) {
+              if (score < current) problemScores[problemId] = score;
+            } else {
+              if (score > current) problemScores[problemId] = score;
+            }
           }
         });
 
-      const totalScore = Object.values(problemScores).reduce((a, b) => a + b, 0);
+      const solvedCount = Object.values(problemScores).filter((v) => v !== null).length;
+      const totalScore = Object.values(problemScores)
+        .filter((v): v is number => v !== null)
+        .reduce((a, b) => a + b, 0);
 
       return {
         teamId: team.id,
         teamName: team.name || team.color,
         teamColor: team.color,
         problemScores,
+        solvedCount,
         totalScore,
       };
     });
 
-    teamStandings.sort((a, b) => b.totalScore - a.totalScore);
+    teamStandings.sort((a, b) => {
+      if (isAsc) {
+        if (a.solvedCount !== b.solvedCount) {
+          return b.solvedCount - a.solvedCount;
+        }
+        return a.totalScore - b.totalScore;
+      } else {
+        return b.totalScore - a.totalScore;
+      }
+    });
 
     return {
       problems,

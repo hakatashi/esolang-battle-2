@@ -10,11 +10,13 @@ export async function syncBoardWithSubmissions(boardId: number) {
   return await prisma.$transaction(async (tx) => {
     const board = await tx.board.findUnique({
       where: { id: boardId },
+      include: { contest: true },
     });
 
-    if (!board) throw new Error(`Board not found: ${boardId}`);
+    if (!board || !board.contest) throw new Error(`Board not found or contest missing: ${boardId}`);
 
     const lastId = board.lastProcessedSubmissionId ?? 0;
+    const scoreOrder = board.contest.scoreOrder;
 
     // 未処理の提出（WJ以外も含めて全て）を古い順に取得
     const nextSubmissions = await tx.submission.findMany({
@@ -66,7 +68,8 @@ export async function syncBoardWithSubmissions(boardId: number) {
         currentState = engine.calculateUpdate(
           config,
           currentState,
-          sub as unknown as BoardSubmission
+          sub as unknown as BoardSubmission,
+          scoreOrder
         );
       }
 

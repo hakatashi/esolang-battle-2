@@ -98,12 +98,19 @@ model Team {
   contestId Int
 }
 
+enum SortOrder {
+  ASC
+  DESC
+}
+
 /// A contest in which users compete by code golf
 model Contest {
   id         Int                 @id @default(autoincrement())
   name       String
   startAt    DateTime
   endAt      DateTime
+  isPublic   Boolean             @default(true)
+  scoreOrder SortOrder           @default(DESC)
 
   problems Problem[]
   teams    Team[]
