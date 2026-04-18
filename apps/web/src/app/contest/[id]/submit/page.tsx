@@ -26,16 +26,27 @@ function SubmitForm() {
   const [selectedLanguageId, setSelectedLanguageId] = useState<string>('');
   const [selectedProblemId, setSelectedProblemId] = useState<string>('');
 
+  const { data: currentProblem, isLoading: isLoadingProbDetail } = trpc.getProblem.useQuery(
+    { problemId: Number(selectedProblemId) },
+    { enabled: !!selectedProblemId }
+  );
+
+  const availableLanguages = currentProblem?.acceptedLanguages || languages || [];
+
   useEffect(() => {
-    if (languages && languages.length > 0) {
+    if (availableLanguages.length > 0) {
       const langIdParam = searchParams.get('languageId');
-      if (langIdParam) {
+      // URLパラメータがあればそれを優先、なければ現在の選択が利用可能言語に含まれているかチェック
+      if (langIdParam && availableLanguages.some((l) => String(l.id) === langIdParam)) {
         setSelectedLanguageId(langIdParam);
-      } else if (!selectedLanguageId) {
-        setSelectedLanguageId(String(languages[0].id));
+      } else if (
+        !selectedLanguageId ||
+        !availableLanguages.some((l) => String(l.id) === selectedLanguageId)
+      ) {
+        setSelectedLanguageId(String(availableLanguages[0].id));
       }
     }
-  }, [languages, searchParams, selectedLanguageId]);
+  }, [availableLanguages, searchParams, selectedLanguageId]);
 
   useEffect(() => {
     if (problems && problems.length > 0) {
@@ -102,11 +113,11 @@ function SubmitForm() {
           </div>
 
           <CodeSubmitForm
-            languages={languages || []}
+            languages={availableLanguages}
             selectedLanguageId={selectedLanguageId}
             onLanguageChange={setSelectedLanguageId}
             onSubmit={handleSubmit}
-            submitLoading={submitMutation.isPending}
+            submitLoading={submitMutation.isPending || isLoadingProbDetail}
             submitText="提出する"
           />
         </>

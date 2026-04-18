@@ -7,6 +7,13 @@ export const problemRouter = router({
   getProblem: publicProcedure.input(problemIdSchema).query(async ({ ctx, input }) => {
     const problem = await findProblemById(ctx.prisma, input.problemId);
     if (!problem) return null;
+
+    let languages = problem.acceptedLanguages;
+    if (languages.length === 0) {
+      const { findAllLanguages } = await import('@esolang-battle/db');
+      languages = await findAllLanguages(ctx.prisma);
+    }
+
     return {
       id: problem.id,
       title: problem.title,
@@ -19,7 +26,7 @@ export const problemRouter = router({
           input: tc.input,
           output: tc.output,
         })),
-      acceptedLanguages: problem.acceptedLanguages.map((lang) => ({
+      acceptedLanguages: languages.map((lang) => ({
         id: lang.id,
         name: lang.name,
         description: lang.description,

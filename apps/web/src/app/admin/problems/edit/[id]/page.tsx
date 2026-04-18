@@ -9,7 +9,20 @@ import { trpc } from '@/utils/trpc';
 import { EyeOutlined, SaveOutlined } from '@ant-design/icons';
 import { DeleteButton, Edit, EditButton, useForm, useSelect, useTable } from '@refinedev/antd';
 import { useParsed } from '@refinedev/core';
-import { App, Button, Card, Form, Input, Select, Space, Table, Tabs, Tag, Transfer } from 'antd';
+import {
+  Alert,
+  App,
+  Button,
+  Card,
+  Form,
+  Input,
+  Select,
+  Space,
+  Table,
+  Tabs,
+  Tag,
+  Transfer,
+} from 'antd';
 
 export default function ProblemEdit() {
   const { message } = App.useApp();
@@ -306,6 +319,17 @@ export default function ProblemEdit() {
 
           <Tabs.TabPane tab="Submittable Languages" key="languages">
             <div style={{ padding: '16px 0' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <Alert
+                  type="info"
+                  showIcon
+                  message={
+                    <span>
+                      <strong>Accepted</strong> 側が空の場合、すべての言語での提出が許可されます。
+                    </span>
+                  }
+                />
+              </div>
               <Card
                 title="Select accepted languages for this problem"
                 extra={
