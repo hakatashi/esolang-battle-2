@@ -107,21 +107,6 @@ export default function CodeTestPage() {
     <div className="max-w-4xl space-y-8">
       {isLoggedIn ? (
         <>
-          <div className="flex justify-end">
-            <Popconfirm
-              title="コードと結果のリセット"
-              description="コード、標準入力、および実行結果をリセットしますか？（言語設定は保持されます）"
-              onConfirm={handleReset}
-              okText="リセットする"
-              cancelText="キャンセル"
-              okButtonProps={{ danger: true }}
-            >
-              <Button type="text" danger>
-                コードと結果をリセット
-              </Button>
-            </Popconfirm>
-          </div>
-
           <CodeSubmitForm
             languages={languages}
             selectedLanguageId={selectedLanguageId}
