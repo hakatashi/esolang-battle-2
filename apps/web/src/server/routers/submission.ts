@@ -40,8 +40,8 @@ export const submissionRouter = router({
           filter.teamId = myTeamId ?? -1;
         }
       } else if (filter.userId) {
-        if (filter.userId !== Number(ctx.user.id)) {
-          filter.userId = Number(ctx.user.id);
+        if (filter.userId !== ctx.user.id) {
+          filter.userId = ctx.user.id;
         }
       } else {
         // フィルタがない場合は自チームに制限
@@ -68,7 +68,7 @@ export const submissionRouter = router({
       const contest = submission.problem?.contest;
       const isOver = contest ? new Date() > new Date(contest.endAt) : false;
       const isAdmin = !!ctx.user.isAdmin;
-      const isOwner = submission.userId === Number(ctx.user.id);
+      const isOwner = submission.userId === ctx.user.id;
 
       const contestId = submission.problem?.contestId;
       const submitterTeam = submission.user?.teams?.find((t: any) => t.contestId === contestId);
@@ -125,7 +125,7 @@ export const submissionRouter = router({
   submitCode: protectedProcedure.input(submitCodeSchema).mutation(async ({ ctx, input }) => {
     const submission = await createSubmission(ctx.prisma, {
       ...input,
-      userId: Number(ctx.user.id),
+      userId: ctx.user.id,
     });
     await submissionQueue.add('evaluate', { submissionId: submission.id });
     return submission;

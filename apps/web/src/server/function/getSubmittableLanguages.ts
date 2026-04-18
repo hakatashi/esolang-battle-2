@@ -32,7 +32,7 @@ export async function getSubmittableLanguageIdsForTeam(
       id: 0,
       problemId: 0,
       languageId: lang.id,
-      userId: 0,
+      userId: '',
       codeLength: 0,
       score: null,
       user: {

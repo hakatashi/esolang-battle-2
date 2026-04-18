@@ -71,7 +71,7 @@ export type BoardData = {
 // --- Submission for Board Engine ---
 export type BoardSubmission = {
   id: number;
-  userId: number;
+  userId: string;
   languageId: number;
   problemId: number;
   score: number | null;

@@ -1,5 +1,8 @@
 'use client';
 
+import React, { useEffect } from 'react';
+
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -9,7 +12,17 @@ import { Avatar, Button, Space } from 'antd';
 
 export default function NavBar() {
   const pathname = usePathname();
-  const { data: me } = trpc.me.useQuery();
+  const { data: session, status } = useSession();
+  const { data: me, refetch } = trpc.me.useQuery(undefined, {
+    enabled: status === 'authenticated',
+  });
+
+  // セッション状態が変わったら tRPC のデータも再取得する
+  useEffect(() => {
+    if (status === 'authenticated') {
+      refetch();
+    }
+  }, [status, refetch]);
 
   const isAdmin = me?.isAdmin;
 

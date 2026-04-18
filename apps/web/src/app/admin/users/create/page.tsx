@@ -18,6 +18,16 @@ export default function UserCreate() {
     <Create saveButtonProps={saveButtonProps}>
       <Form {...formProps} layout="vertical">
         <Form.Item
+          label="Email"
+          name="email"
+          rules={[
+            { required: true, message: 'Please input email' },
+            { type: 'email', message: 'Please enter a valid email' },
+          ]}
+        >
+          <Input placeholder="Enter email" />
+        </Form.Item>
+        <Form.Item
           label="Name"
           name="name"
           rules={[{ required: true, message: 'Please input username' }]}

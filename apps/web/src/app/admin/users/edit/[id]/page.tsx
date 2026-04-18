@@ -9,13 +9,13 @@ import { Checkbox, Form, Input, Select } from 'antd';
 
 export default function UserEdit() {
   const { id } = useParsed();
-  const userId = id ? Number(id) : undefined;
+  const userId = id ? String(id) : undefined;
 
   const { formProps, saveButtonProps, form } = useForm({
     redirect: false,
   });
 
-  const { data: user } = trpc.adminGetUser.useQuery({ id: userId ?? 0 }, { enabled: !!userId });
+  const { data: user } = trpc.adminGetUser.useQuery({ id: userId ?? '' }, { enabled: !!userId });
 
   const initialTeamId = user?.teams && user.teams.length > 0 ? user.teams[0].id : undefined;
 

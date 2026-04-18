@@ -3,7 +3,7 @@ import { isUtf8 } from 'node:buffer';
 import { PrismaClient } from '../../prisma/generated/client/index';
 
 export type GetSubmissionsFilter = {
-  userId?: number;
+  userId?: string;
   teamId?: number;
   problemId?: number | number[];
   languageId?: number | number[];
@@ -115,7 +115,7 @@ export async function createSubmission(
     code: string;
     isBase64?: boolean;
     languageId: number;
-    userId: number;
+    userId: string;
     problemId: number;
   }
 ) {

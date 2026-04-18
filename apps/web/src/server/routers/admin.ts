@@ -31,13 +31,13 @@ export const adminRouter = router({
       include: { teams: true },
     });
   }),
-  adminGetUser: adminProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
+  adminGetUser: adminProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
     const { findUserByIdWithTeams } = await import('@esolang-battle/db');
     const user = await findUserByIdWithTeams(ctx.prisma, input.id);
     if (!user) throw new Error('User not found');
     return {
       id: user.id,
-      name: user.name,
+      name: user.name || '',
       isAdmin: Boolean(user.isAdmin),
       teams: user.teams.map((t) => ({
         id: t.id,
@@ -48,10 +48,17 @@ export const adminRouter = router({
     };
   }),
   adminCreateUser: adminProcedure
-    .input(z.object({ name: z.string(), password: z.string(), isAdmin: z.boolean() }))
+    .input(
+      z.object({
+        email: z.email(),
+        name: z.string(),
+        password: z.string(),
+        isAdmin: z.boolean(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const { registerUser } = await import('@esolang-battle/db');
-      const user = await registerUser(ctx.prisma, input.name, input.password);
+      const user = await registerUser(ctx.prisma, input.email, input.name, input.password);
       if (input.isAdmin) {
         await ctx.prisma.user.update({ where: { id: user.id }, data: { isAdmin: true } });
       }
@@ -60,7 +67,8 @@ export const adminRouter = router({
   adminUpdateUser: adminProcedure
     .input(
       z.object({
-        id: z.number(),
+        id: z.string(),
+        email: z.email().optional(),
         name: z.string().optional(),
         isAdmin: z.boolean().optional(),
         password: z.string().optional(),
@@ -101,12 +109,12 @@ export const adminRouter = router({
       return { success: true };
     }),
   adminDeleteUser: adminProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return await ctx.prisma.user.delete({ where: { id: input.id } });
     }),
   adminDeleteUsers: adminProcedure
-    .input(z.object({ ids: z.array(z.number()) }))
+    .input(z.object({ ids: z.array(z.string()) }))
     .mutation(async ({ ctx, input }) => {
       return await ctx.prisma.user.deleteMany({ where: { id: { in: input.ids } } });
     }),
@@ -451,7 +459,8 @@ export const adminRouter = router({
     .input(
       z.object({
         id: z.number(),
-        userId: z.number().optional(),
+        userId: z.string().optional(),
+
         submittedAt: z.coerce.date().optional(),
         status: z.enum(['AC', 'WA', 'TLE', 'RE', 'WJ']).optional(),
         score: z.number().nullable().optional(),

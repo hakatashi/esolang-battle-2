@@ -125,7 +125,7 @@ export const trpcDataProvider = (): DataProvider => ({
     const r = resource.toLowerCase();
     switch (r) {
       case 'users':
-        return { data: (await client.adminGetUser.query({ id: Number(id) })) as any };
+        return { data: (await client.adminGetUser.query({ id: String(id) })) as any };
       case 'contests':
         return { data: (await client.adminGetContest.query({ id: Number(id) })) as any };
       case 'teams':
@@ -150,6 +150,7 @@ export const trpcDataProvider = (): DataProvider => ({
     switch (r) {
       case 'users':
         data = await client.adminCreateUser.mutate({
+          email: v.email,
           name: v.name,
           password: v.password,
           isAdmin: !!v.isAdmin,
@@ -193,7 +194,7 @@ export const trpcDataProvider = (): DataProvider => ({
       case 'users':
         // 1. 基本情報の更新
         data = await client.adminUpdateUser.mutate({
-          id: Number(id),
+          id: String(id),
           name: v.name,
           isAdmin: v.isAdmin,
           password: v.password || undefined,
@@ -201,7 +202,7 @@ export const trpcDataProvider = (): DataProvider => ({
         // 2. チーム情報の更新（もし存在すれば）
         if (v.teamId !== undefined) {
           await client.adminUpdateUserTeam.mutate({
-            userId: Number(id),
+            userId: String(id),
             teamId: v.teamId ? Number(v.teamId) : null,
           });
         }

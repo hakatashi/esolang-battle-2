@@ -1,11 +1,15 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-  name: z.string(),
+  email: z.email(),
   password: z.string(),
 });
 
-export const registerSchema = loginSchema;
+export const registerSchema = z.object({
+  email: z.email(),
+  name: z.string().min(1),
+  password: z.string().min(4),
+});
 
 export const contestIdSchema = z.object({
   contestId: z.number(),
@@ -25,7 +29,7 @@ export const listProblemsSchema = z.object({
 
 export const submissionFilterSchema = z
   .object({
-    userId: z.number().optional(),
+    userId: z.string().optional(),
     teamId: z.number().optional(),
     problemId: z.union([z.number(), z.array(z.number())]).optional(),
     languageId: z.union([z.number(), z.array(z.number())]).optional(),
@@ -107,7 +111,7 @@ export const upsertTestCaseSchema = z.object({
 });
 
 export const updateUserTeamSchema = z.object({
-  userId: z.number(),
+  userId: z.string(),
   teamId: z.number().nullable(),
 });
 
@@ -118,7 +122,7 @@ export type TeamInfo = {
 };
 
 export type UserInfo = {
-  id: number;
+  id: string;
   name: string;
   isAdmin: boolean;
   teams: TeamInfo[];

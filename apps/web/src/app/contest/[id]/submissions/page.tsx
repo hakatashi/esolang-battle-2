@@ -64,7 +64,7 @@ export default function SubmissionsPage() {
   // tRPCフィルタの構築
   const filter: any = useMemo(() => {
     const f: any = { contestId };
-    if (scope === 'self' && me?.id) f.userId = Number(me.id);
+    if (scope === 'self' && me?.id) f.userId = me.id;
     if (scope === 'team' && myTeam?.id) f.teamId = Number(myTeam.id);
 
     if (filterProblemIds.length > 0) f.problemId = filterProblemIds;
