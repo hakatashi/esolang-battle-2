@@ -69,13 +69,11 @@ export const GridBoard: React.FC<GridBoardProps> = ({
 
   return (
     <div className="flex h-full max-h-full w-full max-w-full flex-col items-center gap-6 py-4">
-      <div className="flex min-h-0 w-full flex-1 items-center justify-center">
+      <div className="flex min-h-0 w-full flex-1 items-start overflow-auto p-4">
         <div
-          className="grid h-auto max-h-full w-auto max-w-full gap-2"
+          className="grid h-fit w-fit mx-auto gap-2"
           style={{
-            gridTemplateColumns: `repeat(${width}, 1fr)`,
-            gridTemplateRows: `repeat(${height}, 1fr)`,
-            aspectRatio: `${width} / ${height}`,
+            gridTemplateColumns: `repeat(${width}, minmax(80px, 1fr))`,
           }}
         >
           {Array.from({ length: width * height }).map((_, index) => {
@@ -85,14 +83,14 @@ export const GridBoard: React.FC<GridBoardProps> = ({
             const info = cellInfo[cellId];
             const cell = state[cellId];
 
-            if (!info) return <div key={cellId} className="rounded bg-gray-200 opacity-10" />;
+            if (!info) return <div key={cellId} className="aspect-square rounded bg-gray-200 opacity-10" />;
 
             return (
               <div
                 key={cellId}
                 role={info.languageId !== undefined ? 'button' : undefined}
                 tabIndex={info.languageId !== undefined ? 0 : undefined}
-                className={`flex items-center justify-center rounded shadow-sm transition-all hover:scale-105 ${info.languageId !== undefined ? 'cursor-pointer' : ''}`}
+                className={`flex aspect-square items-center justify-center rounded shadow-sm transition-all hover:scale-105 ${info.languageId !== undefined ? 'cursor-pointer' : ''}`}
                 style={getCellStyle(cell)}
                 onClick={() => handleCellClick(info.languageId)}
                 onKeyDown={(e) => {
@@ -103,11 +101,11 @@ export const GridBoard: React.FC<GridBoardProps> = ({
                 }}
               >
                 <div className="flex h-full w-full flex-col items-center justify-center overflow-hidden p-1 text-center sm:p-2">
-                  <div className="w-full truncate text-[min(2.5vw,18px)] leading-tight font-black">
+                  <div className="w-full whitespace-normal break-words text-[14px] leading-tight font-black sm:text-[16px]">
                     {info.label}
                   </div>
                   {cell?.score !== null && (
-                    <div className="mt-0.5 text-[min(2vw,14px)] font-bold opacity-80">
+                    <div className="mt-0.5 text-[12px] font-bold opacity-80 sm:text-[14px]">
                       {cell.score}
                     </div>
                   )}
