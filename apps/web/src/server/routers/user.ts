@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { getAvatarUrl } from '@/utils/user';
+import { z } from 'zod';
 
 import { registerSchema } from '@esolang-battle/common';
 import { registerUser } from '@esolang-battle/db';

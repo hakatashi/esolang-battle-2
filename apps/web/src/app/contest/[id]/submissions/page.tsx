@@ -5,12 +5,12 @@ import React, { useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 
+import { StringFilterDropdown } from '@/components/admin/StringFilterDropdown';
 import { trpc } from '@/utils/trpc';
+import { UserOutlined } from '@ant-design/icons';
 import { Avatar, Button, Table, Tag } from 'antd';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { FilterValue, SorterResult } from 'antd/es/table/interface';
-import { StringFilterDropdown } from '@/components/admin/StringFilterDropdown';
-import { UserOutlined } from '@ant-design/icons';
 
 type Scope = 'self' | 'team' | 'all';
 

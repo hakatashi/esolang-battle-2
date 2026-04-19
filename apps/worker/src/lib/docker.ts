@@ -1,6 +1,5 @@
 import Docker from 'dockerode';
 import tar from 'tar-stream';
-import { Readable } from 'stream';
 
 const docker = new Docker();
 
@@ -50,7 +49,7 @@ async function extractTar(stream: any): Promise<Record<string, string>> {
       const chunks: Buffer[] = [];
       // パスからファイル名のみを抽出 (例: "tmp/OUT_0" -> "OUT_0")
       const fileName = header.name.split('/').pop() || header.name;
-      
+
       stream.on('data', (chunk) => chunks.push(chunk));
       stream.on('end', () => {
         files[fileName] = Buffer.concat(chunks).toString('utf8');
@@ -117,7 +116,7 @@ async function runExecutionBatch(
     // 2. ファイルを送り込む (/tmp に展開)
     const tarBuffer = await createTar(files);
     await container.putArchive(tarBuffer, { path: '/tmp' });
-    
+
     // 3. 開始
     await container.start();
 
@@ -145,7 +144,7 @@ async function runExecutionBatch(
     const results: Record<number, DockerResult> = {};
     for (const tc of testCases) {
       const base = String(tc.id);
-      
+
       const stdout = outputFiles[`OUT_${base}`] || '';
       const stderr = outputFiles[`ERR_${base}`] || '';
       const exitText = outputFiles[`EXIT_${base}`] || '-1';

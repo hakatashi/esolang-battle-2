@@ -5,8 +5,8 @@ import React from 'react';
 import { useParams } from 'next/navigation';
 
 import { trpc } from '@/utils/trpc';
-import { Avatar, Spin, Table, Tabs } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
+import { Avatar, Spin, Table, Tabs } from 'antd';
 
 export default function StandingsPage() {
   const params = useParams();

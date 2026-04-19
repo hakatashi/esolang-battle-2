@@ -74,8 +74,12 @@ export abstract class BaseBoardEngine<
             ...state,
             [targetCellId]: {
               ...cell,
-              ownerTeamIds: alreadyTeamOwned ? cell.ownerTeamIds : [...cell.ownerTeamIds, team.id].sort(),
-              submissionIds: alreadySubOwned ? cell.submissionIds : [...cell.submissionIds, submission.id],
+              ownerTeamIds: alreadyTeamOwned
+                ? cell.ownerTeamIds
+                : [...cell.ownerTeamIds, team.id].sort(),
+              submissionIds: alreadySubOwned
+                ? cell.submissionIds
+                : [...cell.submissionIds, submission.id],
             },
           };
         }
