@@ -133,14 +133,14 @@ export function BoardRenderer({ initialData }: { initialData: BoardData | null }
   }
 
   return (
-    <div className="flex h-full w-full flex-col items-center gap-1 overflow-hidden">
+    <div className="flex w-full flex-col items-center gap-1">
       <div className="flex w-full items-center justify-end px-4">
         <Text type="secondary" className="flex items-center gap-1 text-[10px]">
           <ClockCircleOutlined />
           最終更新: {dayjs(board.lastUpdated).format('YYYY/MM/DD HH:mm:ss')}
         </Text>
       </div>
-      <div className="flex w-full flex-1 items-center justify-center overflow-hidden p-2">
+      <div className="flex w-full items-center justify-center p-2">
         {isLoadingTeams && !teams ? (
           <Spin />
         ) : (

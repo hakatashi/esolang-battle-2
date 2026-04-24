@@ -32,8 +32,9 @@ export const GridBoard: React.FC<GridBoardProps> = ({
     const counts: Record<number, number> = {};
     Object.values(state).forEach((cell) => {
       if (cell.ownerTeamIds && cell.ownerTeamIds.length > 0) {
-        const primaryTeamId = cell.ownerTeamIds[0];
-        counts[primaryTeamId] = (counts[primaryTeamId] || 0) + 1;
+        cell.ownerTeamIds.forEach((teamId) => {
+          counts[teamId] = (counts[teamId] || 0) + 1;
+        });
       }
     });
     return counts;
@@ -65,15 +66,22 @@ export const GridBoard: React.FC<GridBoardProps> = ({
     return { backgroundColor: color, color: '#fff' };
   };
 
+  // ラベルの長さに応じて基本フォントサイズを計算する
+  const getFontSize = (label: string) => {
+    if (label.length > 12) return 'text-[10px]';
+    if (label.length > 8) return 'text-[13px]';
+    return 'text-[16px]';
+  };
+
   return (
-    <div className="flex h-full max-h-full w-full max-w-full flex-col items-center gap-6 py-4">
-      <div className="flex min-h-0 w-full flex-1 items-center justify-center">
+    <div className="flex w-full flex-col items-center gap-6 py-4">
+      {/* 盤面エリア: 横スクロール可能にするために w-full + overflow-x-auto */}
+      <div className="flex w-full items-start justify-center overflow-x-auto p-2">
         <div
-          className="grid h-auto max-h-full w-auto max-w-full gap-2"
+          className="grid h-auto gap-2"
           style={{
-            gridTemplateColumns: `repeat(${width}, 1fr)`,
-            gridTemplateRows: `repeat(${height}, 1fr)`,
-            aspectRatio: `${width} / ${height}`,
+            gridTemplateColumns: `repeat(${width}, minmax(80px, 120px))`, // 最小 80px, 最大 150px
+            width: 'fit-content',
           }}
         >
           {Array.from({ length: width * height }).map((_, index) => {
@@ -92,7 +100,7 @@ export const GridBoard: React.FC<GridBoardProps> = ({
                 key={cellId}
                 role={info.languageId !== undefined ? 'button' : undefined}
                 tabIndex={info.languageId !== undefined ? 0 : undefined}
-                className={`relative flex items-center justify-center overflow-hidden rounded shadow-sm transition-all hover:scale-105 ${info.languageId !== undefined ? 'cursor-pointer' : ''}`}
+                className={`relative flex aspect-square items-center justify-center overflow-hidden rounded border border-black/5 shadow-sm transition-all hover:scale-[1.03] ${info.languageId !== undefined ? 'cursor-pointer' : ''}`}
                 style={getCellStyle(cell?.ownerTeamIds || [])}
                 onClick={() => handleCellClick(info.languageId)}
                 onKeyDown={(e) => {
@@ -102,12 +110,14 @@ export const GridBoard: React.FC<GridBoardProps> = ({
                   }
                 }}
               >
-                <div className="z-0 flex h-full w-full flex-col items-center justify-center overflow-hidden p-1 text-center sm:p-2">
-                  <div className="w-full truncate text-[min(2.5vw,18px)] leading-tight font-black">
+                <div className="z-0 flex h-full w-full flex-col items-center justify-center p-1.5 text-center">
+                  <div
+                    className={`${getFontSize(info.label)} w-full leading-tight font-black break-words`}
+                  >
                     {info.label}
                   </div>
                   {cell?.score !== null && (
-                    <div className="mt-0.5 text-[min(2vw,14px)] font-bold opacity-80">
+                    <div className="mt-1 rounded-sm bg-black/10 px-1.5 text-[12px] font-bold opacity-90">
                       {cell.score}
                     </div>
                   )}
@@ -119,17 +129,17 @@ export const GridBoard: React.FC<GridBoardProps> = ({
                     {ownerUsers.slice(0, 3).map((user) => (
                       <Tooltip key={user.id} title={user.name}>
                         <Avatar
-                          size={20}
+                          size={18}
                           src={getAvatarUrl(user.id)}
                           icon={<UserOutlined />}
-                          className="border border-white/50 shadow-sm"
-                          style={{ width: '20px', height: '20px', fontSize: '12px' }}
+                          className="border border-white/40 shadow-sm"
+                          style={{ width: '18px', height: '18px', fontSize: '10px' }}
                         />
                       </Tooltip>
                     ))}
                     {ownerUsers.length > 3 && (
                       <Tooltip title={`${ownerUsers.length} users`}>
-                        <div className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-gray-800 text-[9px] text-white">
+                        <div className="flex h-4.5 w-4.5 items-center justify-center rounded-full border border-white/40 bg-gray-800 text-[8px] text-white">
                           +{ownerUsers.length - 3}
                         </div>
                       </Tooltip>
@@ -142,8 +152,9 @@ export const GridBoard: React.FC<GridBoardProps> = ({
         </div>
       </div>
 
+      {/* チームの戦況表示 */}
       {teams && teams.length > 0 && (
-        <div className="flex shrink-0 items-center justify-center gap-6 rounded-xl border border-gray-100 bg-white px-8 py-3 shadow-lg">
+        <div className="mb-2 flex shrink-0 items-center justify-center gap-6 rounded-xl border border-gray-100 bg-white px-8 py-3 shadow-lg">
           {teams.map((team, idx) => (
             <React.Fragment key={team.id}>
               <div className="flex items-center gap-4">
