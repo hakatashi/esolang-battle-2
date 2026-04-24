@@ -57,6 +57,12 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.SLACK_CLIENT_ID || '',
       clientSecret: process.env.SLACK_CLIENT_SECRET || '',
       allowDangerousEmailAccountLinking: true,
+      wellKnown: 'https://slack.com/.well-known/openid-configuration',
+      authorization: {
+        params: {
+          scope: 'openid profile email',
+        },
+      },
     }),
     CredentialsProvider({
       name: 'Credentials',
