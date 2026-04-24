@@ -43,16 +43,27 @@ async function createTar(files: Record<string, string | Buffer>): Promise<Buffer
 async function extractTar(stream: any): Promise<Record<string, string>> {
   const extract = tar.extract();
   const files: Record<string, string> = {};
+  const MAX_FILE_SIZE = 1 * 1024 * 1024; // 各ファイル最大 1MB までキャプチャ
 
   return new Promise((resolve, reject) => {
     extract.on('entry', (header, stream, next) => {
       const chunks: Buffer[] = [];
-      // パスからファイル名のみを抽出 (例: "tmp/OUT_0" -> "OUT_0")
+      let currentSize = 0;
       const fileName = header.name.split('/').pop() || header.name;
 
-      stream.on('data', (chunk) => chunks.push(chunk));
+      stream.on('data', (chunk) => {
+        if (currentSize < MAX_FILE_SIZE) {
+          const remaining = MAX_FILE_SIZE - currentSize;
+          const toAdd = chunk.length > remaining ? chunk.slice(0, remaining) : chunk;
+          chunks.push(toAdd);
+          currentSize += toAdd.length;
+        }
+      });
       stream.on('end', () => {
         files[fileName] = Buffer.concat(chunks).toString('utf8');
+        if (currentSize >= MAX_FILE_SIZE) {
+          files[fileName] += '\n... (output truncated)';
+        }
         next();
       });
       stream.on('error', reject);
@@ -286,17 +297,25 @@ function decodeDockerLogs(buffer: Buffer): { stdout: string; stderr: string } {
   let stdout = '';
   let stderr = '';
   let offset = 0;
+  const MAX_LOG_SIZE = 1 * 1024 * 1024; // 各ストリーム最大 1MB まで
 
   while (offset < buffer.length) {
     const type = buffer.readUInt8(offset);
     const size = buffer.readUInt32BE(offset + 4);
-    const payload = buffer.toString('utf8', offset + 8, offset + 8 + size);
+    const payloadBuffer = buffer.slice(offset + 8, offset + 8 + size);
+    const payload = payloadBuffer.toString('utf8');
 
-    if (type === 1) stdout += payload;
-    else if (type === 2) stderr += payload;
+    if (type === 1) {
+      if (stdout.length < MAX_LOG_SIZE) stdout += payload;
+    } else if (type === 2) {
+      if (stderr.length < MAX_LOG_SIZE) stderr += payload;
+    }
 
     offset += 8 + size;
   }
+
+  if (stdout.length >= MAX_LOG_SIZE) stdout += '\n... (stdout truncated)';
+  if (stderr.length >= MAX_LOG_SIZE) stderr += '\n... (stderr truncated)';
 
   return { stdout, stderr };
 }

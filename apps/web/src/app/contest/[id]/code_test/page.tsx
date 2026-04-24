@@ -67,10 +67,10 @@ export default function CodeTestPage() {
   }, [languages, selectedLanguageId, storageKey]);
 
   const handleRunTest = async (data: { code: string; isBase64: boolean }) => {
-    if (!isLoggedIn) return;
     try {
       const res = await testCodeMutation.mutateAsync({
         code: data.code,
+        isBase64: data.isBase64,
         languageId: Number(selectedLanguageId),
         stdin: stdinText,
       });

@@ -48,6 +48,7 @@ export const submissionFilterSchema = z
 
 export const testCodeSchema = z.object({
   code: z.string(),
+  isBase64: z.boolean().optional(),
   languageId: z.number(),
   stdin: z.string().optional(),
 });
